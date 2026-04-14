@@ -6,7 +6,7 @@ import { BorderCollieDoctor, PawPrint } from './PetCartoonIcons';
 import type { PetProfileRecord } from '../lib/petProfileDb';
 import { getPetProfileById } from '../lib/petProfileDb';
 import { getChatMessagesByUserPet, saveChatMessage } from '../lib/petChatDb';
-import { apiAskConsultation, apiGetConsultationHistory } from '../lib/backendApi';
+import { apiAskConsultation, apiGetConsultationHistory, getBackendPetId } from '../lib/backendApi';
 
 interface Message {
   id: number;
@@ -38,7 +38,6 @@ export function ConsultationPage() {
   const [attachedImagePreview, setAttachedImagePreview] = useState<string>('');
 
   const userId = useMemo(() => localStorage.getItem('current-user-id') || 'demo-user', []);
-  const petId = useMemo(() => localStorage.getItem('current-pet-id') || '', []);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -46,46 +45,48 @@ export function ConsultationPage() {
 
   useEffect(() => {
     async function load() {
-      const currentPetId = localStorage.getItem('current-pet-id') || '';
-      if (!currentPetId) {
-        setMessages([makeInitialDoctorMessage('毛毛')]);
-        return;
-      }
+      const localPetId = localStorage.getItem('current-pet-id') || '';
+      const backendPetId = await getBackendPetId();
 
-      const profile = await getPetProfileById(currentPetId);
+      const profile = localPetId ? await getPetProfileById(localPetId) : null;
       setPetProfile(profile);
 
-      const history = await getChatMessagesByUserPet(userId, currentPetId);
-      try {
-        const apiHistory = await apiGetConsultationHistory(userId, currentPetId);
-        if (apiHistory.length) {
-          const mapped = apiHistory.map((m) => {
-            const d = new Date(m.created_at);
-            const time = `${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`;
-            return {
-              id: m.id,
-              role: m.role === 'assistant' ? 'doctor' : 'user',
-              text: m.content,
-              time,
-            } as Message;
-          });
-          setMessages(mapped);
-          return;
+      if (backendPetId) {
+        try {
+          const apiHistory = await apiGetConsultationHistory(userId, backendPetId);
+          if (apiHistory.length) {
+            const mapped = apiHistory.map((m) => {
+              const d = new Date(m.created_at);
+              const time = `${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`;
+              return {
+                id: m.id,
+                role: m.role === 'assistant' ? 'doctor' : 'user',
+                text: m.content,
+                time,
+              } as Message;
+            });
+            setMessages(mapped);
+            return;
+          }
+        } catch {
+          // API 不可用时回退本地缓存
         }
-      } catch {
-        // API 不可用时回退本地缓存
       }
 
-      if (history.length) {
-        const toMessage = (m: (typeof history)[number]): Message => {
-          const d = new Date(m.createdAt);
-          const time = `${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`;
-          return { id: Number(m.id) || Date.now(), role: m.role, text: m.text, time };
-        };
-        setMessages(history.map(toMessage));
-      } else {
-        setMessages([makeInitialDoctorMessage(profile?.name || '毛毛')]);
+      if (localPetId) {
+        const history = await getChatMessagesByUserPet(userId, localPetId);
+        if (history.length) {
+          const toMessage = (m: (typeof history)[number]): Message => {
+            const d = new Date(m.createdAt);
+            const time = `${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`;
+            return { id: Number(m.id) || Date.now(), role: m.role, text: m.text, time };
+          };
+          setMessages(history.map(toMessage));
+          return;
+        }
       }
+
+      setMessages([makeInitialDoctorMessage(profile?.name || '毛毛')]);
     }
 
     load();
@@ -110,12 +111,13 @@ export function ConsultationPage() {
     setInput('');
     setIsTyping(true);
 
-    const currentPetId = localStorage.getItem('current-pet-id') || '';
-    if (currentPetId) {
+    const localPetId = localStorage.getItem('current-pet-id') || '';
+    const backendId = await getBackendPetId();
+    if (localPetId) {
       await saveChatMessage({
         id: String(userMsg.id),
         userId,
-        petId: currentPetId,
+        petId: localPetId,
         role: 'user',
         text: displayText,
         image: imageToAttach || undefined,
@@ -127,17 +129,16 @@ export function ConsultationPage() {
     setTimeout(async () => {
       let replyText = '';
 
-      if (currentPetId) {
+      if (backendId) {
         try {
           const apiRes = await apiAskConsultation({
             userId,
-            petId: currentPetId,
+            petId: backendId,
             question: text.trim() || '请分析这张图片中宠物的健康状况',
             image: imageToAttach,
           });
           replyText = apiRes.answer;
         } catch (error) {
-          // API调用失败，显示友好错误信息
           replyText = '抱歉，我暂时无法回答你的问题。请检查网络连接或稍后再试。如果问题持续，建议直接前往宠物医院就诊。🏥';
           console.error('API调用失败:', error);
         }
@@ -154,11 +155,11 @@ export function ConsultationPage() {
 
       setMessages((prev) => [...prev, reply]);
 
-      if (currentPetId) {
+      if (localPetId) {
         await saveChatMessage({
           id: String(reply.id),
           userId,
-          petId: currentPetId,
+          petId: localPetId,
           role: 'doctor',
           text: reply.text,
           createdAt: new Date().toISOString(),

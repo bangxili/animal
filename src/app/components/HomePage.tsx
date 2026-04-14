@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
-import { motion } from 'motion/react';
-import { Bell, MapPin, Home, Heart, MessageCircle, User } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
+import { Bell, MapPin, Home, Heart, MessageCircle, User, ChevronDown, Edit3 } from 'lucide-react';
 import { MiniAppShell } from './MiniAppShell';
 import type { PetProfileRecord } from '../lib/petProfileDb';
-import { getAllPetProfilesByUser } from '../lib/petProfileDb';
-import { apiListPetsByUser, apiGetToiletHistory } from '../lib/backendApi';
+import { getAllPetProfilesByUser, savePetProfile } from '../lib/petProfileDb';
+import { apiListPetsByUser, apiGetToiletHistory, apiUpdatePetProfile } from '../lib/backendApi';
 import {
   BorderCollieDoctor,
   OrangeCatAnalyst,
@@ -23,6 +23,7 @@ const features = [
     path: '/consultation',
     gradient: ['#FF6B9D', '#FF9A5C'],
     icon: BorderCollieDoctor,
+    imgSrc: undefined,
     tag: '🔥 热门',
   },
   {
@@ -32,6 +33,7 @@ const features = [
     path: '/toilet',
     gradient: ['#5B8DEF', '#7EC8E3'],
     icon: OrangeCatAnalyst,
+    imgSrc: undefined,
     tag: '📊 日常',
   },
   {
@@ -41,6 +43,7 @@ const features = [
     path: '/recipe',
     gradient: ['#64D4A8', '#A8E6CF'],
     icon: HamsterChef,
+    imgSrc: undefined,
     tag: '🥗 推荐',
   },
   {
@@ -50,7 +53,18 @@ const features = [
     path: '/gene',
     gradient: ['#7C5CBF', '#C3A6FF'],
     icon: RabbitScientist,
+    imgSrc: undefined,
     tag: '🧬 科技',
+  },
+  {
+    id: 'sbti',
+    title: '宠物版SBTI',
+    subtitle: '性格测试',
+    path: '/sbti',
+    gradient: ['#FFB347', '#FF7F1E'],
+    icon: null,
+    imgSrc: '/sbti-assets/sbti-icon.png',
+    tag: '🧠 测一测',
   },
   {
     id: 'match',
@@ -59,6 +73,7 @@ const features = [
     path: '/match',
     gradient: ['#FF6B9D', '#FF80CC'],
     icon: PetHeartMatch,
+    imgSrc: undefined,
     tag: '💕 配对',
   },
 ];
@@ -90,12 +105,21 @@ export function HomePage() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('home');
   const [tipIndex, setTipIndex] = useState(0);
-  const [pets, setPets] = useState<PetProfileRecord[]>([]);
+
+  // 从 localStorage 缓存立即初始化，避免页面切换时出现空窗期
+  const cachedPet = useMemo<PetProfileRecord | null>(() => {
+    try { return JSON.parse(localStorage.getItem('current-pet-cache') || 'null'); } catch { return null; }
+  }, []);
+  const [pets, setPets] = useState<PetProfileRecord[]>(cachedPet ? [cachedPet] : []);
   const [currentPetId, setCurrentPetId] = useState<string | null>(localStorage.getItem('current-pet-id'));
   const [backendPetId, setBackendPetId] = useState<string>(localStorage.getItem('current-backend-pet-id') || '');
   const [showPetDropdown, setShowPetDropdown] = useState(false);
+  const [showPetDetail, setShowPetDetail] = useState(false);
+  const [showEditPanel, setShowEditPanel] = useState(false);
+  const [editForm, setEditForm] = useState({ name: '', age: '', ageUnit: '岁', gender: '', petType: '', breed: '', weight: '', length: '' });
+  const [editSaving, setEditSaving] = useState(false);
   const [toiletRecords, setToiletRecords] = useState<any[]>([]);
-  const featuredFeature = features[4];
+  const featuredFeature = features[5];
   const FeaturedIcon = featuredFeature.icon;
 
   const profile = useMemo(
@@ -144,12 +168,14 @@ export function HomePage() {
       if (list.length === 0) return;
       setPets(list);
       const storedPetId = localStorage.getItem('current-pet-id');
-      if (storedPetId && list.some((p) => p.id === storedPetId)) {
-        setCurrentPetId(storedPetId);
-      } else {
-        localStorage.setItem('current-pet-id', list[0].id);
-        setCurrentPetId(list[0].id);
+      const active = (storedPetId && list.find((p) => p.id === storedPetId)) || list[0];
+      if (!storedPetId || !list.some((p) => p.id === storedPetId)) {
+        localStorage.setItem('current-pet-id', active.id);
+        setCurrentPetId(active.id);
       }
+      // 缓存当前宠物展示数据（不含 Blob 字段），供下次 mount 时立即初始化
+      const { frontPhoto, sidePhoto, ...cacheable } = active as any;
+      localStorage.setItem('current-pet-cache', JSON.stringify(cacheable));
     });
     // 后端负责提供数字 id，存入独立的 key，不干扰展示
     apiListPetsByUser(userId).then((backendList) => {
@@ -313,11 +339,12 @@ export function HomePage() {
 
           {/* Pet card */}
           <div
-            className="rounded-3xl p-4 flex items-center gap-4"
+            className="rounded-3xl p-4 flex items-center gap-4 cursor-pointer"
             style={{ background: 'rgba(255,255,255,0.22)', backdropFilter: 'blur(10px)' }}
+            onClick={() => setShowPetDetail((v) => !v)}
           >
             <div
-              className="w-16 h-16 rounded-2xl flex items-center justify-center overflow-hidden"
+              className="w-16 h-16 rounded-2xl flex items-center justify-center overflow-hidden flex-shrink-0"
               style={{ background: 'rgba(255,255,255,0.3)' }}
             >
               {profile?.avatarUrl ? (
@@ -326,7 +353,7 @@ export function HomePage() {
                 <span style={{ fontSize: '36px' }}>{petEmoji}</span>
               )}
             </div>
-            <div className="flex-1">
+            <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1 flex-nowrap" style={{ whiteSpace: 'nowrap', overflow: 'hidden' }}>
                 <span className="text-white font-bold flex-shrink-0" style={{ fontSize: '16px' }}>{petName}</span>
                 <span className="px-2 py-0.5 rounded-full text-xs text-white flex-shrink-0" style={{ background: petGenderColor }}>{petGenderLabel}</span>
@@ -344,7 +371,66 @@ export function HomePage() {
               </div>
               <span className="font-semibold" style={{ fontSize: '10px', color: petStatusColor }}>{petStatus}</span>
             </div>
+            <ChevronDown
+              size={16}
+              color="rgba(255,255,255,0.8)"
+              style={{ flexShrink: 0, transform: showPetDetail ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}
+            />
           </div>
+
+          {/* Pet detail panel */}
+          <AnimatePresence>
+            {showPetDetail && profile && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.25 }}
+                style={{ overflow: 'hidden' }}
+              >
+                <div className="mt-2 rounded-3xl p-4" style={{ background: 'rgba(255,255,255,0.18)', backdropFilter: 'blur(10px)' }}>
+                  <div className="grid grid-cols-2 gap-2 mb-3">
+                    {[
+                      { label: '名字', value: profile.name },
+                      { label: '品种', value: petBreed || '未设置' },
+                      { label: '年龄', value: profile.age ? `${profile.age}${profile.ageUnit}` : '未设置' },
+                      { label: '性别', value: petGenderLabel || '未设置' },
+                      { label: '体重', value: profile.weight ? `${profile.weight} kg` : '未设置' },
+                      { label: '体长', value: profile.length ? `${profile.length} cm` : '未设置' },
+                      { label: '类型', value: profile.petType || '未设置' },
+                    ].map((item) => (
+                      <div key={item.label} className="rounded-2xl px-3 py-2" style={{ background: 'rgba(255,255,255,0.25)' }}>
+                        <p style={{ fontSize: '10px', color: 'rgba(255,255,255,0.7)' }}>{item.label}</p>
+                        <p className="font-semibold text-white" style={{ fontSize: '13px' }}>{item.value}</p>
+                      </div>
+                    ))}
+                  </div>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setEditForm({
+                        name: profile.name || '',
+                        age: profile.age || '',
+                        ageUnit: profile.ageUnit || '岁',
+                        gender: profile.gender || '',
+                        petType: profile.petType || '',
+                        breed: profile.breed || '',
+                        weight: profile.weight || '',
+                        length: profile.length || '',
+                      });
+                      setShowEditPanel(true);
+                      setShowPetDetail(false);
+                    }}
+                    className="w-full py-2.5 rounded-2xl flex items-center justify-center gap-2 font-semibold"
+                    style={{ background: 'rgba(255,255,255,0.9)', color: '#FF6B9D', fontSize: '14px' }}
+                  >
+                    <Edit3 size={14} />
+                    修改档案
+                  </button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
 
         <div className="flex-1 overflow-y-auto pb-20">
@@ -372,7 +458,7 @@ export function HomePage() {
 
           {/* Feature Grid */}
           <div className="px-4 grid grid-cols-2 gap-3">
-            {features.slice(0, 4).map((feature, index) => (
+            {features.slice(0, 5).map((feature, index) => (
               <FeatureCard key={feature.id} feature={feature} index={index} navigate={navigate} />
             ))}
           </div>
@@ -482,6 +568,160 @@ export function HomePage() {
             ))}
           </div>
         </div>
+
+        {/* Edit profile panel — full screen overlay */}
+        <AnimatePresence>
+          {showEditPanel && profile && (
+            <motion.div
+              initial={{ x: '100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '100%' }}
+              transition={{ type: 'tween', duration: 0.25 }}
+              className="absolute inset-0 z-50 flex flex-col overflow-hidden"
+              style={{ background: 'linear-gradient(180deg, #FFF5F8 0%, #FFF8FF 100%)' }}
+            >
+              {/* Header */}
+              <div className="flex items-center gap-3 px-4 py-3 border-b" style={{ borderColor: '#FFE0EE' }}>
+                <button
+                  onClick={() => setShowEditPanel(false)}
+                  className="w-8 h-8 rounded-full flex items-center justify-center"
+                  style={{ background: '#FFF0F7' }}
+                >
+                  <span style={{ fontSize: '18px', color: '#FF6B9D' }}>←</span>
+                </button>
+                <span className="font-bold flex-1" style={{ color: '#FF6B9D', fontSize: '16px' }}>修改宠物档案</span>
+                <button
+                  onClick={async () => {
+                    if (editSaving) return;
+                    setEditSaving(true);
+                    try {
+                      // 更新 IndexedDB
+                      await savePetProfile({
+                        ...profile,
+                        name: editForm.name,
+                        age: editForm.age,
+                        ageUnit: editForm.ageUnit,
+                        gender: editForm.gender,
+                        petType: editForm.petType,
+                        breed: editForm.breed,
+                        weight: editForm.weight,
+                        length: editForm.length,
+                      });
+                      // 更新后端
+                      const bpid = localStorage.getItem('current-backend-pet-id') || backendPetId;
+                      if (bpid) {
+                        await apiUpdatePetProfile(bpid, {
+                          name: editForm.name,
+                          age: editForm.age ? Number(editForm.age) : undefined,
+                          age_unit: editForm.ageUnit,
+                          gender: editForm.gender,
+                          pet_type: editForm.petType,
+                          breed: editForm.breed,
+                          weight: editForm.weight ? Number(editForm.weight) : undefined,
+                          length: editForm.length ? Number(editForm.length) : undefined,
+                        });
+                      }
+                      // 更新 pets state 和缓存
+                      const updated = { ...profile, name: editForm.name, age: editForm.age, ageUnit: editForm.ageUnit, gender: editForm.gender, petType: editForm.petType, breed: editForm.breed, weight: editForm.weight, length: editForm.length };
+                      setPets((prev) => prev.map((p) => p.id === profile.id ? updated : p));
+                      const { frontPhoto, sidePhoto, ...cacheable } = updated as any;
+                      localStorage.setItem('current-pet-cache', JSON.stringify(cacheable));
+                      setShowEditPanel(false);
+                    } catch (e) {
+                      console.error(e);
+                    } finally {
+                      setEditSaving(false);
+                    }
+                  }}
+                  className="px-4 py-1.5 rounded-full font-semibold text-sm text-white"
+                  style={{ background: editSaving ? '#FFB0C8' : 'linear-gradient(135deg, #FF6B9D, #FF80CC)' }}
+                >
+                  {editSaving ? '保存中…' : '保存'}
+                </button>
+              </div>
+
+              {/* Form */}
+              <div className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-3">
+                {[
+                  { label: '🐾 名字', key: 'name', placeholder: '宠物名字', type: 'text' },
+                  { label: '⚖️ 体重 (kg)', key: 'weight', placeholder: '体重', type: 'number' },
+                  { label: '📏 体长 (cm)', key: 'length', placeholder: '体长', type: 'number' },
+                  { label: '🎂 年龄', key: 'age', placeholder: '年龄', type: 'number' },
+                  { label: '🔍 品种', key: 'breed', placeholder: '品种', type: 'text' },
+                ].map((field) => (
+                  <div key={field.key} className="bg-white rounded-3xl px-4 py-4 shadow-sm" style={{ border: '1px solid #FFE0EE' }}>
+                    <p className="text-sm font-semibold mb-2" style={{ color: '#FF6B9D' }}>{field.label}</p>
+                    <input
+                      type={field.type}
+                      value={(editForm as any)[field.key]}
+                      onChange={(e) => setEditForm((f) => ({ ...f, [field.key]: e.target.value }))}
+                      placeholder={field.placeholder}
+                      className="w-full px-3 py-2.5 rounded-2xl outline-none text-sm"
+                      style={{ background: '#FFF0F7', border: '1.5px solid #FFD0E8', color: '#444' }}
+                    />
+                  </div>
+                ))}
+
+                {/* Age unit */}
+                <div className="bg-white rounded-3xl px-4 py-4 shadow-sm" style={{ border: '1px solid #FFE0EE' }}>
+                  <p className="text-sm font-semibold mb-2" style={{ color: '#FF6B9D' }}>📅 年龄单位</p>
+                  <div className="flex gap-2">
+                    {['岁', '个月'].map((u) => (
+                      <button
+                        key={u}
+                        onClick={() => setEditForm((f) => ({ ...f, ageUnit: u }))}
+                        className="flex-1 py-2.5 rounded-2xl text-sm font-medium"
+                        style={{
+                          background: editForm.ageUnit === u ? '#FF6B9D' : '#FFF0F7',
+                          color: editForm.ageUnit === u ? 'white' : '#FF9DBB',
+                          border: `1.5px solid ${editForm.ageUnit === u ? '#FF6B9D' : '#FFD0E8'}`,
+                        }}
+                      >{u}</button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Gender */}
+                <div className="bg-white rounded-3xl px-4 py-4 shadow-sm" style={{ border: '1px solid #FFE0EE' }}>
+                  <p className="text-sm font-semibold mb-2" style={{ color: '#FF6B9D' }}>⚧ 性别</p>
+                  <div className="flex gap-2">
+                    {[{ value: 'male', label: '男生 ♂', color: '#5B8DEF' }, { value: 'female', label: '女生 ♀', color: '#FF6B9D' }].map((g) => (
+                      <button
+                        key={g.value}
+                        onClick={() => setEditForm((f) => ({ ...f, gender: g.value }))}
+                        className="flex-1 py-2.5 rounded-2xl text-sm font-medium"
+                        style={{
+                          background: editForm.gender === g.value ? g.color : '#FFF0F7',
+                          color: editForm.gender === g.value ? 'white' : g.color,
+                          border: `1.5px solid ${editForm.gender === g.value ? g.color : '#FFD0E8'}`,
+                        }}
+                      >{g.label}</button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Pet type */}
+                <div className="bg-white rounded-3xl px-4 py-4 shadow-sm" style={{ border: '1px solid #FFE0EE' }}>
+                  <p className="text-sm font-semibold mb-2" style={{ color: '#FF6B9D' }}>🐶 宠物类型</p>
+                  <div className="grid grid-cols-3 gap-2">
+                    {['狗狗', '猫猫', '仓鼠', '兔子', '鸟类', '其他'].map((t) => (
+                      <button
+                        key={t}
+                        onClick={() => setEditForm((f) => ({ ...f, petType: t }))}
+                        className="py-2 rounded-2xl text-sm font-medium"
+                        style={{
+                          background: editForm.petType === t ? '#FF6B9D' : '#FFF0F7',
+                          color: editForm.petType === t ? 'white' : '#FF9DBB',
+                          border: `1.5px solid ${editForm.petType === t ? '#FF6B9D' : '#FFD0E8'}`,
+                        }}
+                      >{t}</button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </MiniAppShell>
   );
@@ -525,7 +765,22 @@ function FeatureCard({
 
       {/* Icon */}
       <div className="mt-3">
-        <feature.icon size={72} />
+        {feature.imgSrc ? (
+          <img
+            src={feature.imgSrc}
+            alt={feature.title}
+            style={{ width: 76, height: 76, objectFit: 'cover', borderRadius: '50%' }}
+          />
+        ) : feature.icon ? (
+          <feature.icon size={72} />
+        ) : (
+          <div
+            className="flex items-center justify-center rounded-2xl"
+            style={{ width: 72, height: 72, fontSize: '40px', background: 'rgba(255,255,255,0.18)' }}
+          >
+            🐾
+          </div>
+        )}
       </div>
 
       {/* Text */}

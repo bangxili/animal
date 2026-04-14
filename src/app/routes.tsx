@@ -9,6 +9,7 @@ import { RecipePage } from './components/RecipePage';
 import { GenePage } from './components/GenePage';
 import { MatchPage } from './components/MatchPage';
 import { HealthPage } from './components/HealthPage';
+import { SBTIPage } from './components/SBTIPage';
 
 export const router = createBrowserRouter([
   { path: '/', Component: WelcomePage },
@@ -21,4 +22,5 @@ export const router = createBrowserRouter([
   { path: '/health', Component: HealthPage },
   { path: '/gene', Component: GenePage },
   { path: '/match', Component: MatchPage },
+  { path: '/sbti', Component: SBTIPage },
 ]);

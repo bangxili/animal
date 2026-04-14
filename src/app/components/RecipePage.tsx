@@ -77,7 +77,9 @@ export function RecipePage() {
   const [expandedDay, setExpandedDay] = useState<string | null>(null);
 
   const userId = useMemo(() => localStorage.getItem('current-user-id') || 'demo-user', []);
-  const petId = useMemo(() => localStorage.getItem('current-pet-id') || '', []);
+  const [petId, setPetId] = useState('');
+
+  useEffect(() => { getBackendPetId().then(setPetId); }, []);
 
   // load on mount
   useEffect(() => {

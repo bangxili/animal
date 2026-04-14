@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, useCallback } from 'react';
+import { useNavigate } from 'react-router';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   X, Camera, ChevronRight, TrendingUp, TrendingDown,
@@ -16,8 +17,10 @@ import {
   apiUpdatePetProfile,
   apiListPetsByUser,
   apiAnalyzePetPhoto,
+  getBackendPetId,
 } from '../lib/backendApi';
-import type { PetProfileRecord } from '../lib/petProfileDb';
+import type { PetProfileRecord, SBTIResult } from '../lib/petProfileDb';
+import { getPetProfileById } from '../lib/petProfileDb';
 
 /* ───────── helpers ───────── */
 function getPetEmoji(t: string) {
@@ -879,10 +882,191 @@ function UploadPhotoModal({
   );
 }
 
+/* ═══════════ SBTI RESULT CARD ═══════════ */
+
+const dimColors: Record<string, [string, string]> = {
+  e: ['#6f8f72', '#4e6e52'], i: ['#7a8ea0', '#5d7081'],
+  u: ['#c78677', '#a06255'], d: ['#86a6b5', '#5f8394'],
+  o: ['#c8a06d', '#a97f4f'], x: ['#8f86a3', '#6f667f'],
+  p: ['#6b8a6a', '#4f6d4f'], c: ['#9a7f63', '#7b6149'],
+  a: ['#b68a9a', '#916878'], n: ['#9a9fa6', '#767b82'],
+};
+
+function MiniDimBar({ label1, label2, pct1, pct2, cls1, cls2 }: {
+  label1: string; label2: string; pct1: number; pct2: number; cls1: string; cls2: string;
+}) {
+  const [c1a] = dimColors[cls1];
+  const [c2a] = dimColors[cls2];
+  return (
+    <div style={{ marginBottom: 8 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, fontWeight: 600, color: '#786a57', marginBottom: 3 }}>
+        <span>{label1} {pct1}%</span>
+        <span>{label2} {pct2}%</span>
+      </div>
+      <div style={{ display: 'flex', height: 14, borderRadius: 4, overflow: 'hidden', border: '1.5px solid #d6ccb8' }}>
+        <div style={{ width: `${pct1}%`, background: c1a, flexShrink: 0 }} />
+        <div style={{ width: `${pct2}%`, background: c2a, flexShrink: 0 }} />
+      </div>
+    </div>
+  );
+}
+
+function SBTIResultCard({
+  result, petName, showDetail, onToggle,
+}: {
+  result: SBTIResult | null;
+  petName: string;
+  showDetail: boolean;
+  onToggle: () => void;
+}) {
+  const navigate = useNavigate();
+  if (!result) {
+    return (
+      <div className="mx-4 mt-4">
+        <div className="flex items-center gap-2 mb-3">
+          <span style={{ fontSize: 16 }}>🧠</span>
+          <span className="font-bold" style={{ color: '#333', fontSize: '15px' }}>性格测试</span>
+        </div>
+        <motion.button
+          whileTap={{ scale: 0.97 }}
+          onClick={() => navigate('/sbti')}
+          className="w-full rounded-2xl p-4 flex items-center gap-3"
+          style={{
+            background: 'linear-gradient(135deg, #f3efe6, #ede8dc)',
+            border: '1.5px dashed #c8956c',
+          }}
+        >
+          <div
+            className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0"
+            style={{ background: 'rgba(200,149,108,0.15)', fontSize: 24 }}
+          >
+            🐾
+          </div>
+          <div className="flex-1 text-left">
+            <p className="font-bold" style={{ color: '#5c4a32', fontSize: 14 }}>还没测过宠物版SBTI</p>
+            <p style={{ color: '#9a836a', fontSize: 12, marginTop: 2 }}>
+              30题揭开{petName}的性格密码 →
+            </p>
+          </div>
+        </motion.button>
+      </div>
+    );
+  }
+
+  const savedDate = new Date(result.savedAt).toLocaleDateString('zh-CN', { month: 'long', day: 'numeric' });
+
+  return (
+    <div className="mx-4 mt-4">
+      <div className="flex items-center gap-2 mb-3">
+        <span style={{ fontSize: 16 }}>🧠</span>
+        <span className="font-bold" style={{ color: '#333', fontSize: '15px' }}>性格测试</span>
+        <span className="text-xs" style={{ color: '#CCC' }}>{savedDate}测</span>
+      </div>
+
+      <div
+        className="rounded-2xl overflow-hidden"
+        style={{ border: '1.5px solid #d6ccb8', background: '#fcfaf5' }}
+      >
+        {/* 折叠头 */}
+        <motion.button
+          whileTap={{ scale: 0.98 }}
+          onClick={onToggle}
+          className="w-full flex items-center gap-3 p-4"
+        >
+          <img
+            src={`/sbti-assets/${result.petKey}1.png`}
+            alt={result.petName}
+            className="w-14 h-14 rounded-xl object-cover flex-shrink-0"
+            style={{ border: '2px solid #c8956c', background: '#ede8dc' }}
+            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+          />
+          <div className="flex-1 text-left">
+            <div className="flex items-center gap-2 mb-1">
+              <span className="font-bold" style={{ color: '#2c251c', fontSize: 15 }}>{result.petName}</span>
+              <span
+                className="px-2 py-0.5 rounded-full text-xs font-bold"
+                style={{ background: '#c8956c22', color: '#a0714f', fontSize: 10 }}
+              >
+                {result.typeCode}
+              </span>
+            </div>
+            <p style={{ color: '#786a57', fontSize: 12, lineHeight: 1.4 }} className="line-clamp-2">
+              {result.petDesc}
+            </p>
+          </div>
+          <span style={{ color: '#c8956c', fontSize: 16, flexShrink: 0, transform: showDetail ? 'rotate(90deg)' : 'none', transition: 'transform 0.2s' }}>›</span>
+        </motion.button>
+
+        {/* 展开内容 */}
+        <AnimatePresence>
+          {showDetail && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.25 }}
+              style={{ overflow: 'hidden' }}
+            >
+              <div style={{ padding: '0 16px 16px', borderTop: '1px solid #e8e0d0' }}>
+                {/* 一句话标签 */}
+                <div
+                  className="rounded-xl px-3 py-2.5 mt-3 mb-3"
+                  style={{ background: '#f3efe6', border: '1px solid #d6ccb8' }}
+                >
+                  <p style={{ color: '#5c4a32', fontSize: 12, lineHeight: 1.6, fontStyle: 'italic' }}>
+                    "{result.petLine}"
+                  </p>
+                </div>
+
+                {/* 维度条 */}
+                <MiniDimBar label1="外向E" label2="内向I" pct1={result.dimE} pct2={result.dimI} cls1="e" cls2="i" />
+                <MiniDimBar label1="强烈U" label2="平稳D" pct1={result.dimU} pct2={result.dimD} cls1="u" cls2="d" />
+                <MiniDimBar label1="外显O" label2="内敛X" pct1={result.dimO} pct2={result.dimX} cls1="o" cls2="x" />
+
+                {/* 行为驱动条 */}
+                <div style={{ marginBottom: 12 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, fontWeight: 600, color: '#786a57', marginBottom: 3 }}>
+                    <span>行为驱动</span>
+                    <span>{['探索', '控制', '关怀', '松弛'].map((l, i) => `${l} ${result.drivePercents[i]}%`).join(' · ')}</span>
+                  </div>
+                  <div style={{ display: 'flex', height: 14, borderRadius: 4, overflow: 'hidden', border: '1.5px solid #d6ccb8' }}>
+                    {(['p', 'c', 'a', 'n'] as const).map((cls, i) => (
+                      <div key={cls} style={{ width: `${result.drivePercents[i]}%`, background: dimColors[cls][0], flexShrink: 0 }} />
+                    ))}
+                  </div>
+                </div>
+
+                {/* 详细分析 */}
+                {result.bodyText.split('\n\n').filter(Boolean).map((para, i) => (
+                  <p key={i} style={{ color: '#5c4a32', fontSize: 12, lineHeight: 1.7, marginBottom: 8 }}>
+                    {para}
+                  </p>
+                ))}
+
+                {/* 重测按钮 */}
+                <motion.button
+                  whileTap={{ scale: 0.97 }}
+                  onClick={() => navigate('/sbti')}
+                  className="w-full mt-2 py-2 rounded-xl text-sm font-semibold"
+                  style={{ background: 'linear-gradient(135deg, #c8956c, #a0714f)', color: 'white' }}
+                >
+                  重新测试
+                </motion.button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    </div>
+  );
+}
+
 /* ═══════════ MAIN PAGE ═══════════ */
 export function HealthPage() {
   const userId = useMemo(() => localStorage.getItem('current-user-id') || 'demo-user', []);
-  const petId = useMemo(() => localStorage.getItem('current-pet-id') || '', []);
+  const [petId, setPetId] = useState('');
+
+  useEffect(() => { getBackendPetId().then(setPetId); }, []);
 
   const [pet, setPet] = useState<PetProfileRecord | null>(null);
   const [toiletRecords, setToiletRecords] = useState<any[]>([]);
@@ -898,6 +1082,18 @@ export function HealthPage() {
   const [showWeightModal, setShowWeightModal] = useState(false);
   const [weightDateType, setWeightDateType] = useState<'today' | 'yesterday'>('today');
   const [showPhotoModal, setShowPhotoModal] = useState(false);
+
+  // SBTI result — loaded from IndexedDB (not backend)
+  const [sbtiResult, setSbtiResult] = useState<SBTIResult | null>(null);
+  const [showSbtiDetail, setShowSbtiDetail] = useState(false);
+
+  useEffect(() => {
+    const petId = localStorage.getItem('current-pet-id');
+    if (!petId) return;
+    getPetProfileById(petId)
+      .then((profile) => { if (profile?.sbtiResult) setSbtiResult(profile.sbtiResult); })
+      .catch(() => {});
+  }, []);
 
   const loadPet = useCallback(async () => {
     if (!petId) return;
@@ -1026,6 +1222,13 @@ export function HealthPage() {
             healthData={healthData}
             loadingType={loadingType}
             onAnalyze={handleAnalyze}
+          />
+
+          <SBTIResultCard
+            result={sbtiResult}
+            petName={pet.name || '毛毛'}
+            showDetail={showSbtiDetail}
+            onToggle={() => setShowSbtiDetail((v) => !v)}
           />
 
           <ToiletHistorySection records={toiletRecords} />

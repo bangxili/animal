@@ -1,3 +1,17 @@
+export type SBTIResult = {
+  petKey: string;
+  petName: string;      // e.g. '比格大魔王'
+  petDesc: string;      // short description
+  typeCode: string;     // e.g. 'EUOP'
+  petLine: string;      // one-liner quote
+  bodyText: string;     // full analysis text
+  drivePercents: [number, number, number, number]; // 探索/控制/关怀/松弛
+  dimE: number; dimI: number;
+  dimU: number; dimD: number;
+  dimO: number; dimX: number;
+  savedAt: string;      // ISO timestamp
+};
+
 export type PetProfileRecord = {
   id: string;
   userId: string;
@@ -15,6 +29,7 @@ export type PetProfileRecord = {
   sidePhotoName?: string;
   avatarUrl?: string;
   createdAt: string;
+  sbtiResult?: SBTIResult;
 };
 
 const DB_NAME = 'pet-health-db';
