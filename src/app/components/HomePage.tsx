@@ -178,10 +178,15 @@ export function HomePage() {
       localStorage.setItem('current-pet-cache', JSON.stringify(cacheable));
     });
     // 后端负责提供数字 id，存入独立的 key，不干扰展示
+    // 优先沿用已存储的 current-backend-pet-id（用户主动切换的结果）
     apiListPetsByUser(userId).then((backendList) => {
       if (backendList.length === 0) return;
-      localStorage.setItem('current-backend-pet-id', backendList[0].id);
-      setBackendPetId(backendList[0].id);
+      const storedBackendId = localStorage.getItem('current-backend-pet-id');
+      const match =
+        (storedBackendId && backendList.find((p) => p.id === storedBackendId)) ||
+        backendList[0];
+      localStorage.setItem('current-backend-pet-id', match.id);
+      setBackendPetId(match.id);
     }).catch(() => {});
   }, []);
 

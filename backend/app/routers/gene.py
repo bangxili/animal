@@ -76,6 +76,7 @@ async def _call_ark_for_gene(prompt: str, base64_image: str) -> dict:
                 ],
             }
         ],
+        "reasoning": {"effort": "low"},
     }
 
     headers = {

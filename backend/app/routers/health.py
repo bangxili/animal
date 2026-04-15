@@ -71,6 +71,7 @@ async def _call_ark_for_health(prompt: str) -> dict:
                 "content": prompt,
             }
         ],
+        "reasoning_effort": "low",
     }
 
     headers = {

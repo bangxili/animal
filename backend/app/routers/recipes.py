@@ -18,7 +18,7 @@ router = APIRouter(prefix="/api/recipes", tags=["recipes"])
 
 def _build_recipe_prompt(pet: PetProfile, recent_consultations: list, recent_toilet: list) -> str:
     # 构建宠物健康上下文
-    context = (
+    context = ( 
         f"宠物档案: 名字={pet.name}, 类型={pet.pet_type}, 品种={pet.breed}, "
         f"年龄={pet.age}{pet.age_unit or ''}, 体重={pet.weight}kg, 体长={pet.length}cm。\n\n"
     )
@@ -100,6 +100,7 @@ async def _call_ark_for_recipe(prompt: str) -> dict:
                 "content": prompt,
             }
         ],
+        "reasoning_effort": "low",
     }
 
     headers = {

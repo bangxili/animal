@@ -369,11 +369,22 @@ function WeightSection({
               {svgPath.points.map((p, i) => (
                 <circle key={`c${i}`} cx={p.x} cy={p.y} r="4" fill="white" stroke="#FF6B9D" strokeWidth="2" />
               ))}
-              {/* 数字标签（绘制在圆圈之上，避免遮挡） */}
+              {/* 数字标签：用 SVG foreignObject 包裹 span 替代 <text>，避免 React removeChild 冲突 */}
               {svgPath.points.map((p, i) => (
-                <text key={`t${i}`} x={p.x} y={p.y - 10} textAnchor="middle" fill="#FF6B9D" fontSize="10" fontWeight="700">
-                  {p.weight}
-                </text>
+                <foreignObject key={`t${i}`} x={p.x - 16} y={p.y - 22} width="32" height="14">
+                  <div
+                    style={{
+                      fontSize: 10,
+                      fontWeight: 700,
+                      color: '#FF6B9D',
+                      textAlign: 'center',
+                      lineHeight: '14px',
+                      userSelect: 'none',
+                    }}
+                  >
+                    {p.weight}
+                  </div>
+                </foreignObject>
               ))}
             </svg>
             {/* X轴日期标签 */}

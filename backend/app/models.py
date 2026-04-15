@@ -43,6 +43,21 @@ class ConsultationMessage(Base):
     pet = relationship("PetProfile", back_populates="conversations")
 
 
+class ConversationSummary(Base):
+    """每个宠物的压缩对话摘要（= 毛博士的长期记忆）"""
+    __tablename__ = "conversation_summaries"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(String(64), index=True, nullable=False)
+    pet_id = Column(Integer, ForeignKey("pet_profiles.id"), index=True, nullable=False)
+    summary = Column(Text, nullable=False)          # 压缩后的摘要文本
+    covered_up_to_id = Column(Integer, nullable=False)  # 已压缩到第几条消息的 id
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    pet = relationship("PetProfile")
+
+
 class ToiletRecord(Base):
     __tablename__ = "toilet_records"
 

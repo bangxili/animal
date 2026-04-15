@@ -140,8 +140,11 @@ export function HamsterChef({ size = 90 }: { size?: number }) {
       <line x1="90" y1="88" x2="90" y2="96" stroke="#888" strokeWidth="2" strokeLinecap="round" />
       <line x1="94" y1="88" x2="94" y2="96" stroke="#888" strokeWidth="2" strokeLinecap="round" />
       <path d="M86 96 Q90 100 94 96" stroke="#888" fill="none" strokeWidth="2" />
-      {/* Food emoji on hat */}
-      <text x="46" y="22" fontSize="14" textAnchor="middle">🍗</text>
+      {/* Chicken drumstick on hat (SVG paths, no <text> node) */}
+      <ellipse cx="52" cy="16" rx="7" ry="5" fill="#E8934A" />
+      <ellipse cx="52" cy="20" rx="4" ry="3" fill="#F5C070" />
+      <rect x="49" y="19" width="6" height="7" rx="2" fill="#F5C070" />
+      <circle cx="52" cy="27" r="3" fill="white" stroke="#DDD" strokeWidth="1" />
     </svg>
   );
 }
@@ -261,9 +264,9 @@ export function PetHeartMatch({ size = 90 }: { size?: number }) {
       {/* Small pink hearts floating */}
       <path d="M46 30 Q46 25 41 25 Q38 25 38 29 Q38 33 46 37 Q54 33 54 29 Q54 25 51 25 Q46 25 46 30 Z" fill="#FF99BB" opacity="0.7" />
       <path d="M74 28 Q74 24 70 24 Q67 24 67 27 Q67 31 74 34 Q81 31 81 27 Q81 24 78 24 Q74 24 74 28 Z" fill="#FF99BB" opacity="0.7" />
-      {/* Sparkles */}
-      <text x="92" y="106" fontSize="12">✨</text>
-      <text x="14" y="106" fontSize="12">✨</text>
+      {/* Sparkles (SVG paths, no <text> node) */}
+      <path d="M96 102 L97.5 106 L101 107 L97.5 108 L96 112 L94.5 108 L91 107 L94.5 106 Z" fill="#FFD700" opacity="0.85" />
+      <path d="M18 102 L19.5 106 L23 107 L19.5 108 L18 112 L16.5 108 L13 107 L16.5 106 Z" fill="#FFD700" opacity="0.85" />
 
       {/* Body hints */}
       <ellipse cx="26" cy="82" rx="20" ry="14" fill="#F5A85A" />

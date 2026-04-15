@@ -139,8 +139,12 @@ export function ConsultationPage() {
           });
           replyText = apiRes.answer;
         } catch (error) {
-          replyText = '抱歉，我暂时无法回答你的问题。请检查网络连接或稍后再试。如果问题持续，建议直接前往宠物医院就诊。🏥';
-          console.error('API调用失败:', error);
+          const errMsg = error instanceof Error ? error.message : String(error);
+          console.error('API调用失败:', errMsg);
+          // 开发模式下在对话框里展示真实错误，方便排查
+          replyText = import.meta.env.DEV
+            ? `⚠️ 后端报错：${errMsg}\n\n请重启后端后重试。`
+            : '抱歉，我暂时无法回答你的问题。请检查网络连接或稍后再试。如果问题持续，建议直接前往宠物医院就诊。🏥';
         }
       } else {
         replyText = '请先创建宠物档案，我才能为你提供专业的健康咨询哦！🐾';

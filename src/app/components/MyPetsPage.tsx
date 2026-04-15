@@ -38,8 +38,21 @@ export function MyPetsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUserId]);
 
-  const handleSelect = (petId: string) => {
-    localStorage.setItem('current-pet-id', petId);
+  const handleSelect = async (petId: string) => {
+    // 1. 设置 backend pet id（整数字符串，供 API 调用）
+    localStorage.setItem('current-backend-pet-id', petId);
+    // 2. 尝试从 IndexedDB 找同名宠物，以获取正确的 UUID
+    const selectedPet = pets.find((p) => p.id === petId);
+    try {
+      const idbPets = await getAllPetProfilesByUser(currentUserId);
+      const idbMatch = selectedPet
+        ? idbPets.find((p) => p.name === selectedPet.name) || idbPets[0]
+        : idbPets[0];
+      if (idbMatch) localStorage.setItem('current-pet-id', idbMatch.id);
+      else localStorage.setItem('current-pet-id', petId);
+    } catch {
+      localStorage.setItem('current-pet-id', petId);
+    }
     setCurrentPetId(petId);
     navigate('/home');
   };

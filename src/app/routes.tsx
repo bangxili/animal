@@ -10,17 +10,18 @@ import { GenePage } from './components/GenePage';
 import { MatchPage } from './components/MatchPage';
 import { HealthPage } from './components/HealthPage';
 import { SBTIPage } from './components/SBTIPage';
+import { RouteErrorBoundary } from './components/RouteErrorBoundary';
 
 export const router = createBrowserRouter([
-  { path: '/', Component: WelcomePage },
-  { path: '/setup', Component: PetProfilePage },
-  { path: '/home', Component: HomePage },
-  { path: '/my', Component: MyPetsPage },
-  { path: '/consultation', Component: ConsultationPage },
-  { path: '/toilet', Component: ToiletPage },
-  { path: '/recipe', Component: RecipePage },
-  { path: '/health', Component: HealthPage },
-  { path: '/gene', Component: GenePage },
-  { path: '/match', Component: MatchPage },
-  { path: '/sbti', Component: SBTIPage },
+  { path: '/', Component: WelcomePage, ErrorBoundary: RouteErrorBoundary },
+  { path: '/setup', Component: PetProfilePage, ErrorBoundary: RouteErrorBoundary },
+  { path: '/home', Component: HomePage, ErrorBoundary: RouteErrorBoundary },
+  { path: '/my', Component: MyPetsPage, ErrorBoundary: RouteErrorBoundary },
+  { path: '/consultation', Component: ConsultationPage, ErrorBoundary: RouteErrorBoundary },
+  { path: '/toilet', Component: ToiletPage, ErrorBoundary: RouteErrorBoundary },
+  { path: '/recipe', Component: RecipePage, ErrorBoundary: RouteErrorBoundary },
+  { path: '/health', Component: HealthPage, ErrorBoundary: RouteErrorBoundary },
+  { path: '/gene', Component: GenePage, ErrorBoundary: RouteErrorBoundary },
+  { path: '/match', Component: MatchPage, ErrorBoundary: RouteErrorBoundary },
+  { path: '/sbti', Component: SBTIPage, ErrorBoundary: RouteErrorBoundary },
 ]);

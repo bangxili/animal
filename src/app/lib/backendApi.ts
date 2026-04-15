@@ -175,7 +175,11 @@ export async function apiAskConsultation(input: {
     method: 'POST',
     body: form,
   });
-  if (!res.ok) throw new Error('ask failed');
+  if (!res.ok) {
+    let detail = `HTTP ${res.status}`;
+    try { const body = await res.json(); detail = body.detail || detail; } catch { /* ignore */ }
+    throw new Error(detail);
+  }
   return (await res.json()) as { answer: string };
 }
 
