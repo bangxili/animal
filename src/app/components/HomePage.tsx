@@ -6,6 +6,7 @@ import { MiniAppShell } from './MiniAppShell';
 import type { PetProfileRecord } from '../lib/petProfileDb';
 import { getAllPetProfilesByUser, savePetProfile } from '../lib/petProfileDb';
 import { apiListPetsByUser, apiGetToiletHistory, apiUpdatePetProfile } from '../lib/backendApi';
+import { useRequireAuth } from '../lib/useRequireAuth';
 import {
   BorderCollieDoctor,
   OrangeCatAnalyst,
@@ -103,6 +104,7 @@ const tabItems = [
 
 export function HomePage() {
   const navigate = useNavigate();
+  useRequireAuth();
   const [activeTab, setActiveTab] = useState('home');
   const [tipIndex, setTipIndex] = useState(0);
 
@@ -164,12 +166,51 @@ export function HomePage() {
   useEffect(() => {
     const userId = localStorage.getItem('current-user-id') || 'demo-user';
     // IndexedDB 负责展示数据（name/weight/breed/length 完整）
-    getAllPetProfilesByUser(userId).then((list) => {
-      if (list.length === 0) return;
-      setPets(list);
+    getAllPetProfilesByUser(userId).then(async (list) => {
+      let pets = list;
+      if (pets.length === 0) {
+        // IndexedDB 无数据 → 从后端同步写入
+        try {
+          const backendList = await apiListPetsByUser(userId);
+          for (const p of backendList) {
+            await savePetProfile({ ...p, userId });
+          }
+          pets = await getAllPetProfilesByUser(userId);
+        } catch {
+          return;
+        }
+        if (pets.length === 0) return;
+      }
+
+      // 补全 avatarUrl：IndexedDB 里没有但后端有的，静默更新
+      try {
+        const backendList = await apiListPetsByUser(userId);
+        let changed = false;
+        for (const bp of backendList) {
+          if (!bp.avatarUrl) continue;
+          const local = pets.find((p) => p.name === bp.name && !p.avatarUrl);
+          if (local) {
+            const updated = { ...local, avatarUrl: bp.avatarUrl };
+            await savePetProfile(updated);
+            pets = pets.map((p) => p.id === local.id ? updated : p);
+            changed = true;
+          }
+        }
+        if (changed) {
+          // 同步更新 backend-pet-id 映射
+          const storedBackendId = localStorage.getItem('current-backend-pet-id');
+          const match = (storedBackendId && backendList.find((p) => p.id === storedBackendId)) || backendList[0];
+          if (match) {
+            localStorage.setItem('current-backend-pet-id', match.id);
+            setBackendPetId(match.id);
+          }
+        }
+      } catch { /* 补全失败不影响主流程 */ }
+
+      setPets(pets);
       const storedPetId = localStorage.getItem('current-pet-id');
-      const active = (storedPetId && list.find((p) => p.id === storedPetId)) || list[0];
-      if (!storedPetId || !list.some((p) => p.id === storedPetId)) {
+      const active = (storedPetId && pets.find((p) => p.id === storedPetId)) || pets[0];
+      if (!storedPetId || !pets.some((p) => p.id === storedPetId)) {
         localStorage.setItem('current-pet-id', active.id);
         setCurrentPetId(active.id);
       }

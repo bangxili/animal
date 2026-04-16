@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { motion } from 'motion/react';
-import { ChevronRight, PawPrint, Plus, Trash2 } from 'lucide-react';
+import { LogOut, PawPrint, Plus, Trash2, ChevronRight } from 'lucide-react';
 import { MiniAppShell } from './MiniAppShell';
 import type { PetProfileRecord } from '../lib/petProfileDb';
-import { getAllPetProfilesByUser } from '../lib/petProfileDb';
+import { getAllPetProfilesByUser, savePetProfile } from '../lib/petProfileDb';
 import { apiListPetsByUser, apiDeletePet } from '../lib/backendApi';
 
 function getPetEmoji(petType: string) {
@@ -16,6 +16,16 @@ function getPetEmoji(petType: string) {
   return '🐾';
 }
 
+/** 清除当前登录状态，跳转到登录页 */
+function clearAuthAndRedirect(navigate: ReturnType<typeof useNavigate>) {
+  localStorage.removeItem('current-user-id');
+  localStorage.removeItem('current-username');
+  localStorage.removeItem('current-pet-id');
+  localStorage.removeItem('current-backend-pet-id');
+  localStorage.removeItem('current-pet-cache');
+  navigate('/', { replace: true });
+}
+
 export function MyPetsPage() {
   const navigate = useNavigate();
   const [pets, setPets] = useState<PetProfileRecord[]>([]);
@@ -23,37 +33,47 @@ export function MyPetsPage() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const currentUserId = useMemo(() => localStorage.getItem('current-user-id') || 'demo-user', []);
+  const currentUsername = useMemo(() => localStorage.getItem('current-username') || '用户', []);
 
   useEffect(() => {
-    const syncCurrentPet = (list: PetProfileRecord[]) => {
-      setPets(list);
-      if (!currentPetId && list[0]) {
-        localStorage.setItem('current-pet-id', list[0].id);
-        setCurrentPetId(list[0].id);
+    // 先查 IndexedDB；如果为空则从后端同步并写入 IndexedDB
+    getAllPetProfilesByUser(currentUserId).then(async (list) => {
+      let pets = list;
+      if (pets.length === 0) {
+        // IndexedDB 没有该用户的宠物 → 从后端拉取并同步
+        try {
+          const backendList = await apiListPetsByUser(currentUserId);
+          for (const p of backendList) {
+            await savePetProfile({ ...p, userId: currentUserId });
+          }
+          pets = await getAllPetProfilesByUser(currentUserId);
+        } catch {
+          // 后端也拉不到，保持空列表
+        }
       }
-    };
-    apiListPetsByUser(currentUserId).then(syncCurrentPet).catch(() => {
-      getAllPetProfilesByUser(currentUserId).then(syncCurrentPet);
+      setPets(pets);
+      if (!currentPetId && pets[0]) {
+        localStorage.setItem('current-pet-id', pets[0].id);
+        setCurrentPetId(pets[0].id);
+      }
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUserId]);
 
-  const handleSelect = async (petId: string) => {
-    // 1. 设置 backend pet id（整数字符串，供 API 调用）
-    localStorage.setItem('current-backend-pet-id', petId);
-    // 2. 尝试从 IndexedDB 找同名宠物，以获取正确的 UUID
-    const selectedPet = pets.find((p) => p.id === petId);
+  const handleSelect = async (pet: PetProfileRecord) => {
+    // 设置 IndexedDB UUID/ID 作为 current-pet-id
+    localStorage.setItem('current-pet-id', pet.id);
+    setCurrentPetId(pet.id);
+    // 去后端列表里按名字+品种匹配，拿整数 ID 写入 current-backend-pet-id
     try {
-      const idbPets = await getAllPetProfilesByUser(currentUserId);
-      const idbMatch = selectedPet
-        ? idbPets.find((p) => p.name === selectedPet.name) || idbPets[0]
-        : idbPets[0];
-      if (idbMatch) localStorage.setItem('current-pet-id', idbMatch.id);
-      else localStorage.setItem('current-pet-id', petId);
+      const backendList = await apiListPetsByUser(currentUserId);
+      const match = backendList.find((b) => b.name === pet.name && b.breed === pet.breed)
+        || backendList.find((b) => b.name === pet.name)
+        || backendList[0];
+      if (match) localStorage.setItem('current-backend-pet-id', match.id);
     } catch {
-      localStorage.setItem('current-pet-id', petId);
+      // 网络失败就用已缓存的 backend id 继续
     }
-    setCurrentPetId(petId);
     navigate('/home');
   };
 
@@ -80,7 +100,8 @@ export function MyPetsPage() {
   return (
     <MiniAppShell
       title="我的"
-      showBack={false}
+      showBack={true}
+      onBack={() => navigate('/home')}
       bgColor="bg-[#FFF5F8]"
       titleColor="text-[#FF6B9D]"
       rightAction={
@@ -95,14 +116,46 @@ export function MyPetsPage() {
       }
     >
       <div className="flex-1 overflow-y-auto px-4 pb-24">
+
+        {/* ── 账号信息卡片 ── */}
+        <div
+          className="mt-4 mb-5 rounded-3xl px-4 py-4"
+          style={{ background: 'linear-gradient(135deg, #FF6B9D 0%, #FF9A5C 100%)' }}
+        >
+          <div className="flex items-center gap-3">
+            <div
+              className="w-12 h-12 rounded-2xl flex items-center justify-center font-bold text-xl"
+              style={{ background: 'rgba(255,255,255,0.25)', color: 'white' }}
+            >
+              {currentUsername.charAt(0).toUpperCase()}
+            </div>
+            <div className="flex-1">
+              <p className="text-white font-bold" style={{ fontSize: 16 }}>{currentUsername}</p>
+              <p className="text-white/70" style={{ fontSize: 12 }}>共 {pets.length} 只毛孩子</p>
+            </div>
+            <button
+              onClick={() => {
+                if (!confirm('确定要退出登录吗？')) return;
+                clearAuthAndRedirect(navigate);
+              }}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-2xl text-xs font-semibold transition-all active:scale-95"
+              style={{ background: 'rgba(255,255,255,0.2)', color: 'white' }}
+            >
+              <LogOut size={14} />
+              退出登录
+            </button>
+          </div>
+        </div>
+
+        {/* ── 宠物列表 ── */}
         {pets.length === 0 ? (
-          <div className="mt-6 px-4 py-6 rounded-3xl" style={{ background: 'white', border: '1.5px solid #FFD0E8' }}>
+          <div className="px-4 py-6 rounded-3xl" style={{ background: 'white', border: '1.5px solid #FFD0E8' }}>
             <p className="text-sm font-semibold" style={{ color: '#FF6B9D' }}>还没有宠物档案</p>
-            <p className="text-xs" style={{ color: '#AAA', marginTop: 6 }}>请先在“新建宠物”里建立档案</p>
+            <p className="text-xs" style={{ color: '#AAA', marginTop: 6 }}>请先在"新建宠物"里建立档案</p>
           </div>
         ) : (
           <>
-            <div className="mt-4 mb-3 flex items-center gap-2">
+            <div className="mb-3 flex items-center gap-2">
               <PawPrint size={14} color="#FF6B9D" />
               <span className="text-sm font-bold" style={{ color: '#333' }}>请选择要使用的宠物</span>
             </div>
@@ -135,6 +188,11 @@ export function MyPetsPage() {
                           <span className="px-2 py-0.5 rounded-full text-xs" style={{ background: '#FFE0F0', color: '#FF6B9D' }}>
                             {p.petType}
                           </span>
+                          {isActive && (
+                            <span className="px-2 py-0.5 rounded-full text-xs font-semibold" style={{ background: '#FF6B9D', color: 'white' }}>
+                              使用中
+                            </span>
+                          )}
                         </div>
                         <div className="text-xs" style={{ color: '#888', marginTop: 4 }}>
                           {p.breed || '未设置品种'} · {p.age || '-'}{p.ageUnit || ''} · {p.weight ? `${p.weight}kg` : '-'}
@@ -144,7 +202,7 @@ export function MyPetsPage() {
                     </div>
                     <div className="mt-3 flex gap-2">
                       <button
-                        onClick={() => handleSelect(p.id)}
+                        onClick={() => handleSelect(p)}
                         className="flex-1 py-2 rounded-2xl text-sm font-semibold transition-all"
                         style={{
                           background: isActive ? '#FF6B9D' : '#5B8DEF',
@@ -177,4 +235,6 @@ export function MyPetsPage() {
     </MiniAppShell>
   );
 }
+
+
 

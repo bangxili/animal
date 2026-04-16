@@ -1,8 +1,18 @@
-from sqlalchemy import Column, DateTime, Float, ForeignKey, Integer, String, Text, Date, JSON
+from sqlalchemy import Column, DateTime, Float, ForeignKey, Integer, String, Text, Date, JSON, Boolean
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
 from .database import Base
+
+
+class User(Base):
+    """注册用户表，通过 user_id（UUID字符串）与所有业务数据关联"""
+    __tablename__ = "users"
+
+    id = Column(String(64), primary_key=True)           # UUID，全站通用的 user_id
+    username = Column(String(64), unique=True, index=True, nullable=False)
+    hashed_password = Column(String(255), nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 
 class PetProfile(Base):

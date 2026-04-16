@@ -7,6 +7,7 @@ import { MiniAppShell } from './MiniAppShell';
 import { PawPrint } from './PetCartoonIcons';
 import { savePetProfile } from '../lib/petProfileDb';
 import { apiCreatePetProfile, apiUploadPetPhotos } from '../lib/backendApi';
+import { useRequireAuth } from '../lib/useRequireAuth';
 
 const petTypes = ['狗狗', '猫猫', '仓鼠', '兔子', '鸟类', '其他'];
 const BREEDS_BY_TYPE: Record<string, string[]> = {
@@ -27,6 +28,7 @@ const steps = ['基本信息', '身体数据', '上传照片'];
 
 export function PetProfilePage() {
   const navigate = useNavigate();
+  useRequireAuth();
   const [step, setStep] = useState(0);
   const frontPhotoInputRef = useRef<HTMLInputElement>(null);
   const sidePhotoInputRef = useRef<HTMLInputElement>(null);
@@ -71,7 +73,7 @@ export function PetProfilePage() {
 
     const userId = localStorage.getItem('current-user-id') || 'demo-user';
     const localId = crypto.randomUUID();
-    await savePetProfile({
+    const baseRecord = {
       id: localId,
       userId,
       name: form.name,
@@ -87,9 +89,14 @@ export function PetProfilePage() {
       frontPhotoName: form.frontPhotoFile?.name,
       sidePhotoName: form.sidePhotoFile?.name,
       createdAt: new Date().toISOString(),
-    });
+    };
+
+    // 1. 先写 IndexedDB，current-pet-id 指向本地 UUID
+    await savePetProfile(baseRecord);
+    localStorage.setItem('current-pet-id', localId);
 
     try {
+      // 2. 同步到后端，拿整数 ID
       const created = await apiCreatePetProfile({
         userId,
         name: form.name,
@@ -101,12 +108,23 @@ export function PetProfilePage() {
         weight: form.weight ? Number(form.weight) : undefined,
         length: form.length ? Number(form.length) : undefined,
       });
-      localStorage.setItem('current-pet-id', created.id);
+      // 3. 更新 current-backend-pet-id，确保后续功能页面读到新宠物数据
+      localStorage.setItem('current-backend-pet-id', created.id);
 
+      // 4. 上传照片并生成 Q 版头像
       setSubmitStatus('正在生成Q版卡通头像，请稍候...');
-      await apiUploadPetPhotos(created.id, form.frontPhotoFile, form.sidePhotoFile);
+      const withAvatar = await apiUploadPetPhotos(created.id, form.frontPhotoFile, form.sidePhotoFile);
+
+      // 5. 把头像 URL 写回 IndexedDB（保持 localId 不变）
+      if (withAvatar?.avatarUrl) {
+        const updated = { ...baseRecord, avatarUrl: withAvatar.avatarUrl };
+        await savePetProfile(updated);
+        // 同步缓存，让 HomePage 立即展示头像
+        const { frontPhoto, sidePhoto, ...cacheable } = updated as any;
+        localStorage.setItem('current-pet-cache', JSON.stringify(cacheable));
+      }
     } catch {
-      localStorage.setItem('current-pet-id', localId);
+      // 后端失败时保留本地 UUID 作为当前宠物，backend-pet-id 维持原值
     }
     setIsSubmitting(false);
     navigate('/home');

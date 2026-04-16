@@ -2,6 +2,40 @@ import type { PetProfileRecord } from './petProfileDb';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000';
 
+// ── 注册 / 登录 ───────────────────────────────────────────────
+
+export interface AuthResult {
+  user_id: string;
+  username: string;
+  has_pets: boolean;
+}
+
+export async function apiRegister(username: string, password: string): Promise<AuthResult> {
+  const res = await fetch(`${API_BASE}/api/auth/register`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, password }),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.detail || `注册失败 (${res.status})`);
+  }
+  return res.json() as Promise<AuthResult>;
+}
+
+export async function apiLogin(username: string, password: string): Promise<AuthResult> {
+  const res = await fetch(`${API_BASE}/api/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, password }),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.detail || `登录失败 (${res.status})`);
+  }
+  return res.json() as Promise<AuthResult>;
+}
+
 /** 获取后端数字 pet_id，优先读缓存，没有则从后端拉取并缓存 */
 export async function getBackendPetId(): Promise<string> {
   const cached = localStorage.getItem('current-backend-pet-id');

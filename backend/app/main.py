@@ -5,6 +5,7 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy import inspect, text
 
 from .database import Base, engine
+from .routers.auth import router as auth_router
 from .routers.consultations import router as consultations_router
 from .routers.pets import router as pets_router
 from .routers.recipes import router as recipes_router
@@ -51,6 +52,22 @@ with engine.connect() as conn:
         conn.execute(text("ALTER TABLE pet_profiles ADD COLUMN avatar_url VARCHAR(512)"))
         conn.commit()
 
+    # users: 确保 users 表存在（新增注册登录功能）
+    if "users" not in inspect(engine).get_table_names():
+        conn.execute(text(
+            """
+            CREATE TABLE users (
+                id VARCHAR(64) PRIMARY KEY,
+                username VARCHAR(64) NOT NULL UNIQUE,
+                hashed_password VARCHAR(255) NOT NULL,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+            """
+        ))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_users_username ON users(username)"))
+        conn.commit()
+        print("[Startup] 创建 users 表成功")
+
     # conversation_summaries: 确保表存在（create_all 已处理，但检查一次更稳健）
     inspector = inspect(engine)
     if "conversation_summaries" not in inspector.get_table_names():
@@ -72,6 +89,7 @@ with engine.connect() as conn:
         conn.commit()
         print("[Startup] 创建 conversation_summaries 表成功")
 
+app.include_router(auth_router)
 app.include_router(pets_router)
 app.include_router(consultations_router)
 app.include_router(toilet_router)
