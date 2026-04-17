@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router';
 import { motion, AnimatePresence } from 'motion/react';
+import { NoPetBlock, hasPetProfile } from './NoPetGuard';
 import {
   X, Camera, ChevronRight, TrendingUp, TrendingDown,
   Scale, Activity, Droplets, Heart, Bone, Sparkles, Edit3, Check,
@@ -985,7 +986,7 @@ function SBTIResultCard({
           className="w-full flex items-center gap-3 p-4"
         >
           <img
-            src={`/sbti-assets/${result.petKey}1.png`}
+            src={`${import.meta.env.BASE_URL}sbti-assets/${result.petKey}1.png`}
             alt={result.petName}
             className="w-14 h-14 rounded-xl object-cover flex-shrink-0"
             style={{ border: '2px solid #c8956c', background: '#ede8dc' }}
@@ -1205,6 +1206,9 @@ export function HealthPage() {
 
   return (
     <MiniAppShell title="宠物健康" showBack bgColor="bg-[#FFF5F8]" titleColor="text-[#FF6B9D]">
+      {!hasPetProfile() ? (
+        <NoPetBlock pageName="宠物健康" />
+      ) : (
       <div className="flex-1 flex flex-col overflow-hidden" style={{ background: '#FFF5F8' }}>
         <div className="flex-1 overflow-y-auto pb-8">
           {/* top gradient */}
@@ -1253,20 +1257,21 @@ export function HealthPage() {
             </p>
           </div>
         </div>
-      </div>
 
-      {/* Modals */}
-      <AnimatePresence>
-        {showEditModal && pet && (
-          <EditPetModal pet={pet} onClose={() => setShowEditModal(false)} onSave={handleSavePet} />
-        )}
-        {showWeightModal && (
-          <AddWeightModal currentWeight={pet.weight || ''} dateType={weightDateType} onClose={() => setShowWeightModal(false)} onSave={handleAddWeight} />
-        )}
-        {showPhotoModal && (
-          <UploadPhotoModal petId={petId} onClose={() => setShowPhotoModal(false)} onDone={handlePhotoDone} />
-        )}
-      </AnimatePresence>
+        {/* Modals */}
+        <AnimatePresence>
+          {showEditModal && pet && (
+            <EditPetModal pet={pet} onClose={() => setShowEditModal(false)} onSave={handleSavePet} />
+          )}
+          {showWeightModal && (
+            <AddWeightModal currentWeight={pet.weight || ''} dateType={weightDateType} onClose={() => setShowWeightModal(false)} onSave={handleAddWeight} />
+          )}
+          {showPhotoModal && (
+            <UploadPhotoModal petId={petId} onClose={() => setShowPhotoModal(false)} onDone={handlePhotoDone} />
+          )}
+        </AnimatePresence>
+      </div>
+      )}
     </MiniAppShell>
   );
 }

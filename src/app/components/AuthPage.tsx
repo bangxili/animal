@@ -11,6 +11,7 @@ function persistAuth(userId: string, username: string) {
   // 切换账号时清除上一个用户残留的宠物缓存
   localStorage.removeItem('current-pet-id');
   localStorage.removeItem('current-backend-pet-id');
+  localStorage.removeItem('current-pet-cache');
 }
 
 export function AuthPage() {

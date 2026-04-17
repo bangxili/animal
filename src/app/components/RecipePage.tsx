@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Sparkles, ChevronRight, Flame, Droplets, Beef, Plus, Trash2, X, BarChart3, Check } from 'lucide-react';
+import { NoPetBlock, hasPetProfile } from './NoPetGuard';
 import { MiniAppShell } from './MiniAppShell';
 import { HamsterChef, PawPrint } from './PetCartoonIcons';
 import {
@@ -164,6 +165,9 @@ export function RecipePage() {
 
   return (
     <MiniAppShell title="每日食谱" showBack bgColor="bg-[#EEFFEF]" titleColor="text-[#64D4A8]">
+      {!hasPetProfile() ? (
+        <NoPetBlock pageName="每日食谱" />
+      ) : (
       <div className="flex-1 flex flex-col overflow-hidden" style={{ background: '#F2FFF4' }}>
         {/* Header */}
         <div
@@ -547,22 +551,23 @@ export function RecipePage() {
             </>
           )}
         </div>
-      </div>
 
-      {/* Add Meal Modal */}
-      <AnimatePresence>
-        {showAddModal && (
-          <AddMealModal
-            mealType={addingMealType}
-            onClose={() => setShowAddModal(false)}
-            onSave={async (items) => {
-              await apiAddMealLog({ userId, petId, mealType: addingMealType, items });
-              await loadTodayMealLogs();
-              setShowAddModal(false);
-            }}
-          />
-        )}
-      </AnimatePresence>
+        {/* Add Meal Modal */}
+        <AnimatePresence>
+          {showAddModal && (
+            <AddMealModal
+              mealType={addingMealType}
+              onClose={() => setShowAddModal(false)}
+              onSave={async (items) => {
+                await apiAddMealLog({ userId, petId, mealType: addingMealType, items });
+                await loadTodayMealLogs();
+                setShowAddModal(false);
+              }}
+            />
+          )}
+        </AnimatePresence>
+      </div>
+      )}
     </MiniAppShell>
   );
 }

@@ -26,5 +26,5 @@ export const router = createBrowserRouter([
   { path: '/gene',   Component: GenePage,         ErrorBoundary: RouteErrorBoundary },
   { path: '/match',  Component: MatchPage,        ErrorBoundary: RouteErrorBoundary },
   { path: '/sbti',   Component: SBTIPage,         ErrorBoundary: RouteErrorBoundary },
-]);
+], { basename: import.meta.env.VITE_BASE_PATH || '/' });
 

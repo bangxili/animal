@@ -4,6 +4,7 @@ from uuid import uuid4
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
 
 from ..database import get_db
 from ..models import PetProfile, PetSocialProfile
@@ -20,16 +21,25 @@ API_BASE_PATH = "/uploads/social"
 def _get_or_create_social_profile(
     user_id: str, pet_id: int, db: Session
 ) -> PetSocialProfile:
+    # 只按 pet_id 查（pet_id 本身唯一，user_id 过滤会导致跨账号数据看不到）
     profile = (
         db.query(PetSocialProfile)
-        .filter(PetSocialProfile.user_id == user_id, PetSocialProfile.pet_id == pet_id)
+        .filter(PetSocialProfile.pet_id == pet_id)
         .first()
     )
     if not profile:
-        profile = PetSocialProfile(user_id=user_id, pet_id=pet_id, photo_paths=[], tags=[])
-        db.add(profile)
-        db.commit()
-        db.refresh(profile)
+        try:
+            profile = PetSocialProfile(user_id=user_id, pet_id=pet_id, photo_paths=[], tags=[])
+            db.add(profile)
+            db.commit()
+            db.refresh(profile)
+        except IntegrityError:
+            db.rollback()
+            profile = (
+                db.query(PetSocialProfile)
+                .filter(PetSocialProfile.pet_id == pet_id)
+                .first()
+            )
     return profile
 
 

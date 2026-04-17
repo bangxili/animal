@@ -64,7 +64,7 @@ const features = [
     path: '/sbti',
     gradient: ['#FFB347', '#FF7F1E'],
     icon: null,
-    imgSrc: '/sbti-assets/sbti-icon.png',
+    imgSrc: `${import.meta.env.BASE_URL}sbti-assets/sbti-icon.png`,
     tag: '🧠 测一测',
   },
   {

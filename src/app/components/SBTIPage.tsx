@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router';
 import { motion, AnimatePresence } from 'motion/react';
+import { NoPetBanner } from './NoPetGuard';
 import { MiniAppShell } from './MiniAppShell';
 import { getPetProfileById, savePetProfile } from '../lib/petProfileDb';
 
@@ -441,6 +442,7 @@ export function SBTIPage() {
         }}
       >
         <div style={{ padding: '16px 14px 100px' }}>
+          <NoPetBanner />
 
           {/* 顶部标题卡 */}
           <div
@@ -628,7 +630,7 @@ export function SBTIPage() {
 
                     {/* 宠物插图 */}
                     <img
-                      src={`/sbti-assets/${result.petKey}1.png`}
+                      src={`${import.meta.env.BASE_URL}sbti-assets/${result.petKey}1.png`}
                       alt={result.pet.name}
                       style={{ width: '100%', height: 200, objectFit: 'contain', margin: '6px 0 10px', borderRadius: 12, background: 'rgba(255,255,255,0.35)', border: '1px solid rgba(92,74,46,0.22)', display: 'block' }}
                       onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}

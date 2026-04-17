@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { MapPin, Heart, X, MessageCircle, Filter, Star, Check, Camera, Pencil } from 'lucide-react';
+import { NoPetBlock, hasPetProfile } from './NoPetGuard';
 import { MiniAppShell } from './MiniAppShell';
 import { PetHeartMatch } from './PetCartoonIcons';
 import { getPetProfileById, getLatestPetProfileByUser, type PetProfileRecord } from '../lib/petProfileDb';
@@ -13,6 +14,8 @@ import {
   apiListPetsByUser,
   type ApiSocialProfile,
 } from '../lib/backendApi';
+
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000';
 
 interface Pet {
   id: number;
@@ -315,7 +318,7 @@ function ProfileEditor({
       if (petPhotoUrls?.frontPhotoUrl) base.push({ url: petPhotoUrls.frontPhotoUrl, type: 'pet' });
       if (petPhotoUrls?.sidePhotoUrl) base.push({ url: petPhotoUrls.sidePhotoUrl, type: 'pet' });
       (updated.photo_paths || []).forEach((p, i) => {
-        const url = p.startsWith('http') ? p : `http://127.0.0.1:8000${p}`;
+        const url = p.startsWith('http') ? p : `${API_BASE}${p}`;
         base.push({ url, type: 'social', index: i });
       });
       setLocalPhotos(base);
@@ -333,7 +336,7 @@ function ProfileEditor({
       if (petPhotoUrls?.frontPhotoUrl) base.push({ url: petPhotoUrls.frontPhotoUrl, type: 'pet' });
       if (petPhotoUrls?.sidePhotoUrl) base.push({ url: petPhotoUrls.sidePhotoUrl, type: 'pet' });
       (updated.photo_paths || []).forEach((p, i) => {
-        const url = p.startsWith('http') ? p : `http://127.0.0.1:8000${p}`;
+        const url = p.startsWith('http') ? p : `${API_BASE}${p}`;
         base.push({ url, type: 'social', index: i });
       });
       setLocalPhotos(base);
@@ -547,8 +550,11 @@ export function MatchPage() {
   useEffect(() => {
     if (activeView !== 'profile') return;
     setProfileLoading(true);
-    // petRecord 始终从 IndexedDB 加载，保证 name/weight/breed/length 等字段完整
-    const loadPetRecord = getLatestPetProfileByUser(userId);
+    // 用 current-pet-id 精准取对应的 IndexedDB 记录，fallback 到最新
+    const currentPetId = localStorage.getItem('current-pet-id') || '';
+    const loadPetRecord = currentPetId
+      ? getPetProfileById(currentPetId).then((r) => r ?? getLatestPetProfileByUser(userId))
+      : getLatestPetProfileByUser(userId);
     // 后端数字 id 优先从专用 key 取，避免和 IndexedDB UUID 混用
     const storedBpid = localStorage.getItem('current-backend-pet-id') || '';
     const loadBpid: Promise<string> = storedBpid
@@ -578,7 +584,7 @@ export function MatchPage() {
     if (petPhotoUrls?.frontPhotoUrl) photos.push({ url: petPhotoUrls.frontPhotoUrl, type: 'pet' });
     if (petPhotoUrls?.sidePhotoUrl) photos.push({ url: petPhotoUrls.sidePhotoUrl, type: 'pet' });
     (socialProfile?.photo_paths || []).forEach((p, i) => {
-      const url = p.startsWith('http') ? p : `http://127.0.0.1:8000${p}`;
+      const url = p.startsWith('http') ? p : `${API_BASE}${p}`;
       photos.push({ url, type: 'social', index: i });
     });
     return photos;
@@ -611,6 +617,9 @@ export function MatchPage() {
 
   return (
     <MiniAppShell title="宠物交友配对" showBack bgColor="bg-[#FFF0F5]" titleColor="text-[#FF6B9D]">
+      {!hasPetProfile() ? (
+        <NoPetBlock pageName="宠物交友配对" />
+      ) : (
       <div className="flex-1 flex flex-col overflow-hidden relative" style={{ background: '#FFF5FA' }}>
         {/* Header */}
         <div
@@ -949,6 +958,7 @@ export function MatchPage() {
           )}
         </AnimatePresence>
       </div>
+      )}
     </MiniAppShell>
   );
 }

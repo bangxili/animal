@@ -1,4 +1,14 @@
 import { useRef, useState } from 'react';
+
+function generateUUID(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16);
+  });
+}
 import type { ReactNode } from 'react';
 import { useNavigate } from 'react-router';
 import { motion } from 'motion/react';
@@ -72,7 +82,7 @@ export function PetProfilePage() {
     setSubmitStatus('正在创建宠物档案...');
 
     const userId = localStorage.getItem('current-user-id') || 'demo-user';
-    const localId = crypto.randomUUID();
+    const localId = generateUUID();
     const baseRecord = {
       id: localId,
       userId,
@@ -529,6 +539,20 @@ export function PetProfilePage() {
             {step < 2 ? '下一步' : '完成建档，出发！'}
             <PawPrint size={18} color="white" />
           </motion.button>
+          {!isSubmitting && (
+            <button
+              onClick={() => {
+                localStorage.removeItem('current-pet-id');
+                localStorage.removeItem('current-backend-pet-id');
+                localStorage.removeItem('current-pet-cache');
+                navigate('/home');
+              }}
+              className="w-full mt-3 py-2 text-sm"
+              style={{ color: '#CCA0B0', background: 'none', border: 'none', cursor: 'pointer' }}
+            >
+              跳过此处，先去体验 →
+            </button>
+          )}
         </div>
 
         {/* 生成头像加载遮罩 */}

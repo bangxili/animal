@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Camera, ChevronRight, Clock, Crown, X } from 'lucide-react';
+import { NoPetBanner } from './NoPetGuard';
 import { MiniAppShell } from './MiniAppShell';
 import { RabbitScientist, PawPrint } from './PetCartoonIcons';
 import { apiAnalyzeGene, apiGetGeneHistory, getBackendPetId } from '../lib/backendApi';
@@ -203,6 +204,7 @@ export function GenePage() {
         </div>
 
         <div className="flex-1 overflow-y-auto px-4 pt-4 pb-6 flex flex-col gap-4">
+          <NoPetBanner />
           {activeTab === 'upload' && (
             <div className="bg-white rounded-3xl p-4" style={{ border: '1px solid #DDD0FF' }}>
               <p className="text-sm font-semibold mb-1" style={{ color: '#7C5CBF' }}>📸 照片识别</p>

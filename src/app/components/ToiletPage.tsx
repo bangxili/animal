@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Camera, CheckCircle, Clock, X } from 'lucide-react';
 import { MiniAppShell } from './MiniAppShell';
+import { NoPetBanner } from './NoPetGuard';
 import { OrangeCatAnalyst } from './PetCartoonIcons';
 import { apiAnalyzeToilet, apiGetToiletHistory, getBackendPetId } from '../lib/backendApi';
 import { AutoRecoverBoundary } from './AutoRecoverBoundary';
@@ -210,6 +211,7 @@ export function ToiletPage() {
         {/* AutoRecoverBoundary 只包裹内容渲染区，不包裹 state 持有层 */}
         <AutoRecoverBoundary>
           <div className="flex-1 overflow-y-auto px-4 pt-4 pb-6 flex flex-col gap-4">
+            <NoPetBanner />
             {activeTab === 'upload' ? (
               <>
                 {/* 双照片上传区域 */}

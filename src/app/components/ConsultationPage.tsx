@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Send, Mic, Image as ImageIcon, Plus } from 'lucide-react';
+import { NoPetBanner } from './NoPetGuard';
 import { MiniAppShell } from './MiniAppShell';
 import { BorderCollieDoctor, PawPrint } from './PetCartoonIcons';
 import type { PetProfileRecord } from '../lib/petProfileDb';
@@ -212,6 +213,7 @@ export function ConsultationPage() {
 
         {/* Messages */}
         <div className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-3">
+          <NoPetBanner />
           <AnimatePresence>
             {messages.map((msg) => (
               <motion.div

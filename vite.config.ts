@@ -19,4 +19,7 @@ export default defineConfig({
 
   // File types to support raw imports. Never add .css, .tsx, or .ts files to this.
   assetsInclude: ['**/*.svg', '**/*.csv'],
+
+  // Sub-path deployment: served at /pet/
+  base: process.env.VITE_BASE_PATH ? process.env.VITE_BASE_PATH.replace(/\/?$/, '/') : '/',
 })
