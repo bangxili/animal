@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Camera, CheckCircle, Clock, X } from 'lucide-react';
+import { fmtShort } from '../lib/dateUtils';
 import { MiniAppShell } from './MiniAppShell';
 import { NoPetBanner } from './NoPetGuard';
 import { OrangeCatAnalyst } from './PetCartoonIcons';
@@ -95,7 +96,7 @@ export function ToiletPage() {
       const data = await apiGetToiletHistory(userId, petId);
       const formatted = data.map((r: any) => {
         const date = new Date(r.created_at);
-        const dateStr = `${date.getMonth() + 1}/${date.getDate()} ${date.getHours()}:${String(date.getMinutes()).padStart(2, '0')}`;
+        const dateStr = fmtShort(r.created_at);
         return {
           date: dateStr,
           type: r.type === 'poop' ? '大便' : r.type === 'pee' ? '小便' : '大便+小便',

@@ -13,6 +13,7 @@ from .routers.toilet import router as toilet_router
 from .routers.health import router as health_router
 from .routers.gene import router as gene_router
 from .routers.match import router as match_router
+from .routers.admin import router as admin_router
 
 app = FastAPI(title="Pet Health Backend", version="0.1.0")
 
@@ -97,6 +98,7 @@ app.include_router(recipes_router)
 app.include_router(health_router)
 app.include_router(gene_router)
 app.include_router(match_router)
+app.include_router(admin_router)
 
 # 静态文件：用于暴露上传的图片（部署到公网后，模型才能访问）
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")

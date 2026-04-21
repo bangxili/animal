@@ -22,6 +22,7 @@ import {
 } from '../lib/backendApi';
 import type { PetProfileRecord, SBTIResult } from '../lib/petProfileDb';
 import { getPetProfileById } from '../lib/petProfileDb';
+import { fmtShort } from '../lib/dateUtils';
 
 /* ───────── helpers ───────── */
 function getPetEmoji(t: string) {
@@ -245,99 +246,233 @@ function HealthOverview({
 }
 
 /* ───────── section: 体重趋势 ───────── */
+function generateWeightSummary(
+  dataPoints: Array<{ weight: number; date: string }>,
+  pet: PetProfileRecord | null,
+): string {
+  if (dataPoints.length === 0) return '';
+  if (dataPoints.length === 1) {
+    const w = dataPoints[0].weight;
+    const name = pet?.name || '它';
+    return `已记录 ${w}kg，继续坚持每天记录，即可查看体重变化趋势 📊`;
+  }
+
+  const weights = dataPoints.map((d) => d.weight);
+  const latest = weights[weights.length - 1];
+  const first = weights[0];
+  const totalChange = +(latest - first).toFixed(2);
+  const name = pet?.name || '它';
+
+  // 判断最近几天趋势
+  const recent = weights.slice(-3);
+  const recentTrend = recent.length >= 2
+    ? recent[recent.length - 1] - recent[0]
+    : 0;
+
+  // 根据体重变化生成摘要
+  const petWeight = pet?.weight ? parseFloat(String(pet.weight)) : null;
+  let summary = '';
+
+  if (recentTrend < -0.05) {
+    const days = recent.length;
+    summary = `近${days}天${name}体重持续下降`;
+    if (petWeight && latest < petWeight * 0.95) {
+      summary += '，体重偏低，注意适量增加营养摄入 🍖';
+    } else if (petWeight && latest <= petWeight) {
+      summary += '，正在步入健康体重范围 💪';
+    } else {
+      summary += '，体重管理效果良好 ✨';
+    }
+  } else if (recentTrend > 0.05) {
+    const days = recent.length;
+    summary = `近${days}天${name}体重有所上升`;
+    if (petWeight && latest > petWeight * 1.1) {
+      summary += '，体重偏高，建议适量控制饮食 🥗';
+    } else {
+      summary += '，保持均衡饮食和适量运动 🏃';
+    }
+  } else {
+    summary = `${name}体重保持平稳`;
+    if (totalChange < 0) {
+      summary += `，本周期共减轻 ${Math.abs(totalChange)}kg，状态不错 🌟`;
+    } else if (totalChange > 0) {
+      summary += `，本周期共增加 ${totalChange}kg，注意饮食均衡 🍽️`;
+    } else {
+      summary += '，体重控制得很稳定 👍';
+    }
+  }
+
+  return summary;
+}
+
 function WeightSection({
   currentWeight,
   weightHistory,
+  pet,
   onAddWeight,
 }: {
   currentWeight: string;
   weightHistory: Array<{ weight: number; recorded_at: string }>;
-  onAddWeight: (dateType: 'today' | 'yesterday') => void;
+  pet: PetProfileRecord | null;
+  onAddWeight: () => void;
 }) {
-  // 构建7天滑动窗口数据
-  const chartData = useMemo(() => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const days: Array<{ date: string; label: string; weight: number | null }> = [];
-
-    // 构建日期->体重的映射
-    const weightMap = new Map<string, number>();
-    for (const r of weightHistory) {
-      weightMap.set(r.recorded_at, r.weight);
-    }
-
-    // 最多展示7天，从D-6到D-0
-    const windowSize = 7;
-    for (let i = windowSize - 1; i >= 0; i--) {
-      const d = new Date(today);
-      d.setDate(d.getDate() - i);
-      const key = toLocalDateStr(d);
-      const label = i === 0 ? '今天' : i === 1 ? '昨天' : `${d.getMonth() + 1}/${d.getDate()}`;
-      days.push({ date: key, label, weight: weightMap.get(key) ?? null });
-    }
-
-    return days;
+  // 找第一条记录日期，确定7天周期起点
+  const firstDate = useMemo(() => {
+    if (weightHistory.length === 0) return null;
+    const sorted = [...weightHistory].sort((a, b) => a.recorded_at.localeCompare(b.recorded_at));
+    return sorted[0].recorded_at; // YYYY-MM-DD
   }, [weightHistory]);
 
-  // 有数据的点（带index信息用于x轴定位）
-  const dataPoints = useMemo(() => {
-    const pts: Array<{ idx: number; date: string; label: string; weight: number }> = [];
-    for (let i = 0; i < chartData.length; i++) {
-      const d = chartData[i];
-      if (d.weight !== null) {
-        pts.push({ idx: i, ...d, weight: d.weight });
-      }
+  // 当前显示的周期索引（0 = 第一个周期，1 = 第二个，...）
+  const totalCycles = useMemo(() => {
+    if (!firstDate) return 1;
+    const start = new Date(firstDate);
+    start.setHours(0, 0, 0, 0);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const daysDiff = Math.floor((today.getTime() - start.getTime()) / 86400000);
+    return Math.max(1, Math.ceil((daysDiff + 1) / 7));
+  }, [firstDate]);
+
+  const [cycleIndex, setCycleIndex] = useState<number | null>(null); // null = 最新周期
+  const activeCycle = cycleIndex ?? (totalCycles - 1);
+
+  // 构建该周期的7天日期列表
+  const chartData = useMemo(() => {
+    if (!firstDate) {
+      // 无记录时显示当前7天
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      return Array.from({ length: 7 }, (_, i) => {
+        const d = new Date(today);
+        d.setDate(d.getDate() - (6 - i));
+        const key = toLocalDateStr(d);
+        const label = i === 6 ? '今天' : `${d.getMonth() + 1}/${d.getDate()}`;
+        return { date: key, label, weight: null as number | null };
+      });
     }
-    return pts;
-  }, [chartData]);
+
+    const start = new Date(firstDate);
+    start.setHours(0, 0, 0, 0);
+    const cycleStart = new Date(start);
+    cycleStart.setDate(cycleStart.getDate() + activeCycle * 7);
+
+    const weightMap = new Map<string, number>();
+    for (const r of weightHistory) weightMap.set(r.recorded_at, r.weight);
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    return Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(cycleStart);
+      d.setDate(d.getDate() + i);
+      const key = toLocalDateStr(d);
+      const isFuture = d > today;
+      const isToday = toLocalDateStr(d) === toLocalDateStr(today);
+      const label = isToday ? '今天' : `${d.getMonth() + 1}/${d.getDate()}`;
+      return {
+        date: key,
+        label,
+        weight: isFuture ? null : (weightMap.get(key) ?? null),
+        isFuture,
+      };
+    });
+  }, [firstDate, weightHistory, activeCycle]);
+
+  // 有数据的点
+  const dataPoints = useMemo(() =>
+    chartData
+      .map((d, idx) => ({ idx, ...d }))
+      .filter((d) => d.weight !== null) as Array<{ idx: number; date: string; label: string; weight: number; isFuture: boolean }>,
+    [chartData],
+  );
 
   const trend = useMemo(() => {
     if (dataPoints.length < 2) return null;
-    const last = dataPoints[dataPoints.length - 1].weight;
-    const prev = dataPoints[dataPoints.length - 2].weight;
-    return last - prev;
+    return dataPoints[dataPoints.length - 1].weight - dataPoints[dataPoints.length - 2].weight;
   }, [dataPoints]);
 
-  // 计算SVG折线图坐标
+  // SVG
   const chartW = 300;
   const chartH = 100;
   const padX = 10;
-  const padTop = 22; // 顶部留空给数字标签
+  const padTop = 22;
   const padBot = 6;
 
-  const svgPath = useMemo(() => {
-    if (dataPoints.length < 2) return null;
+  const svgData = useMemo(() => {
+    if (dataPoints.length === 0) return null;
 
     const allWeights = dataPoints.map((d) => d.weight);
     const minW = Math.min(...allWeights);
     const maxW = Math.max(...allWeights);
-    const range = maxW - minW || 1;
+    const range = maxW - minW || 0.5; // single point: range = 0.5 so it renders centered
 
-    const points: Array<{ x: number; y: number; weight: number; label: string }> = [];
-    for (const dp of dataPoints) {
-      const x = padX + (dp.idx / (chartData.length - 1)) * (chartW - padX * 2);
-      const y = padTop + (1 - (dp.weight - minW) / range) * (chartH - padTop - padBot);
-      points.push({ x, y, weight: dp.weight, label: dp.label });
-    }
+    const points = dataPoints.map((dp) => {
+      const xFrac = chartData.length > 1 ? dp.idx / (chartData.length - 1) : 0.5;
+      const x = padX + xFrac * (chartW - padX * 2);
+      const y = dataPoints.length === 1
+        ? padTop + (chartH - padTop - padBot) / 2 // center vertically for single point
+        : padTop + (1 - (dp.weight - minW) / range) * (chartH - padTop - padBot);
+      return { x, y, weight: dp.weight, label: dp.label };
+    });
 
-    const pathD = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
+    const pathD = points.length >= 2
+      ? points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ')
+      : null;
+
     const areaD = pathD
-      + ` L ${points[points.length - 1].x} ${chartH}`
-      + ` L ${points[0].x} ${chartH} Z`;
+      ? pathD
+        + ` L ${points[points.length - 1].x} ${chartH}`
+        + ` L ${points[0].x} ${chartH} Z`
+      : null;
 
-    return { pathD, areaD, points, minW, maxW };
-  }, [chartData, dataPoints]);
+    return { points, pathD, areaD, minW, maxW };
+  }, [dataPoints, chartData]);
 
-  // 检查今天/昨天是否已有数据
-  const todayHasData = chartData[chartData.length - 1]?.weight !== null;
-  const yesterdayHasData = chartData[chartData.length - 2]?.weight !== null;
+  const summary = useMemo(() => generateWeightSummary(dataPoints, pet), [dataPoints, pet]);
+
+  const todayHasData = useMemo(() => {
+    const today = toLocalDateStr(new Date());
+    return chartData.some((d) => d.date === today && d.weight !== null);
+  }, [chartData]);
+
+  // 周期标签
+  const cycleLabel = useMemo(() => {
+    if (!firstDate) return '近7天';
+    const start = new Date(firstDate);
+    start.setHours(0, 0, 0, 0);
+    const cs = new Date(start);
+    cs.setDate(cs.getDate() + activeCycle * 7);
+    const ce = new Date(cs);
+    ce.setDate(ce.getDate() + 6);
+    const fmt = (d: Date) => `${d.getMonth() + 1}/${d.getDate()}`;
+    return `${fmt(cs)} – ${fmt(ce)}`;
+  }, [firstDate, activeCycle]);
 
   return (
     <div className="mx-4 mt-4">
       <div className="flex items-center gap-2 mb-3">
         <span style={{ fontSize: '16px' }}>⚖️</span>
         <span className="font-bold" style={{ color: '#333', fontSize: '15px' }}>体重趋势</span>
-        <span className="text-xs ml-1" style={{ color: '#CCC' }}>近7日</span>
+        <span className="text-xs ml-1" style={{ color: '#CCC' }}>{cycleLabel}</span>
+        {/* 周期导航 */}
+        {totalCycles > 1 && (
+          <div className="ml-auto flex items-center gap-1">
+            <button
+              onClick={() => setCycleIndex(Math.max(0, activeCycle - 1))}
+              disabled={activeCycle === 0}
+              className="w-6 h-6 rounded-full flex items-center justify-center text-xs"
+              style={{ background: activeCycle === 0 ? '#F5F5F5' : '#FFE0EE', color: activeCycle === 0 ? '#CCC' : '#FF6B9D' }}
+            >‹</button>
+            <span className="text-xs" style={{ color: '#BBB' }}>{activeCycle + 1}/{totalCycles}</span>
+            <button
+              onClick={() => setCycleIndex(Math.min(totalCycles - 1, activeCycle + 1))}
+              disabled={activeCycle === totalCycles - 1}
+              className="w-6 h-6 rounded-full flex items-center justify-center text-xs"
+              style={{ background: activeCycle === totalCycles - 1 ? '#F5F5F5' : '#FFE0EE', color: activeCycle === totalCycles - 1 ? '#CCC' : '#FF6B9D' }}
+            >›</button>
+          </div>
+        )}
       </div>
 
       <div className="bg-white rounded-3xl p-4" style={{ border: '1px solid #FFE0EE' }}>
@@ -345,15 +480,16 @@ function WeightSection({
           <span className="text-2xl font-bold" style={{ color: '#333' }}>{currentWeight || '-'}</span>
           <span className="text-sm pb-0.5" style={{ color: '#999' }}>kg</span>
           {trend !== null && (
-            <span className="flex items-center gap-0.5 text-xs font-medium ml-2 pb-0.5" style={{ color: trend > 0 ? '#FF6B6B' : trend < 0 ? '#64D4A8' : '#999' }}>
+            <span className="flex items-center gap-0.5 text-xs font-medium ml-2 pb-0.5"
+              style={{ color: trend > 0 ? '#FF6B6B' : trend < 0 ? '#64D4A8' : '#999' }}>
               {trend > 0 ? <TrendingUp size={12} /> : trend < 0 ? <TrendingDown size={12} /> : null}
-              {trend > 0 ? '+' : ''}{trend.toFixed(1)}kg
+              {trend > 0 ? '+' : ''}{trend.toFixed(2)}kg
             </span>
           )}
         </div>
 
-        {/* SVG 折线图 */}
-        {svgPath ? (
+        {/* SVG折线图 — 单点也显示 */}
+        {svgData ? (
           <div className="relative">
             <svg viewBox={`0 0 ${chartW} ${chartH}`} className="w-full" style={{ height: '110px' }}>
               <defs>
@@ -362,27 +498,16 @@ function WeightSection({
                   <stop offset="100%" stopColor="#FF6B9D" stopOpacity="0.02" />
                 </linearGradient>
               </defs>
-              {/* 填充区域 */}
-              <path d={svgPath.areaD} fill="url(#weightFill)" />
-              {/* 折线 */}
-              <path d={svgPath.pathD} fill="none" stroke="#FF6B9D" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-              {/* 数据点圆圈 */}
-              {svgPath.points.map((p, i) => (
+              {svgData.areaD && <path d={svgData.areaD} fill="url(#weightFill)" />}
+              {svgData.pathD && (
+                <path d={svgData.pathD} fill="none" stroke="#FF6B9D" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+              )}
+              {svgData.points.map((p, i) => (
                 <circle key={`c${i}`} cx={p.x} cy={p.y} r="4" fill="white" stroke="#FF6B9D" strokeWidth="2" />
               ))}
-              {/* 数字标签：用 SVG foreignObject 包裹 span 替代 <text>，避免 React removeChild 冲突 */}
-              {svgPath.points.map((p, i) => (
+              {svgData.points.map((p, i) => (
                 <foreignObject key={`t${i}`} x={p.x - 16} y={p.y - 22} width="32" height="14">
-                  <div
-                    style={{
-                      fontSize: 10,
-                      fontWeight: 700,
-                      color: '#FF6B9D',
-                      textAlign: 'center',
-                      lineHeight: '14px',
-                      userSelect: 'none',
-                    }}
-                  >
+                  <div style={{ fontSize: 10, fontWeight: 700, color: '#FF6B9D', textAlign: 'center', lineHeight: '14px', userSelect: 'none' }}>
                     {p.weight}
                   </div>
                 </foreignObject>
@@ -391,57 +516,43 @@ function WeightSection({
             {/* X轴日期标签 */}
             <div className="flex justify-between mt-1 px-1">
               {chartData.map((d) => (
-                <span
-                  key={d.date}
-                  className="text-center"
+                <span key={d.date} className="text-center"
                   style={{
                     fontSize: '9px',
-                    color: d.weight !== null ? '#FF6B9D' : '#DDD',
+                    color: d.weight !== null ? '#FF6B9D' : (d as any).isFuture ? '#EEE' : '#DDD',
                     fontWeight: d.weight !== null ? 500 : 400,
                     width: `${100 / chartData.length}%`,
-                  }}
-                >
+                  }}>
                   {d.label}
                 </span>
               ))}
             </div>
           </div>
-        ) : dataPoints.length === 1 ? (
-          <div className="text-center py-3">
-            <p className="text-xs" style={{ color: '#999' }}>
-              已记录 <span style={{ color: '#FF6B9D', fontWeight: 600 }}>{dataPoints[0].weight}kg</span>（{dataPoints[0].label}），再记录一次即可展示趋势图
-            </p>
-          </div>
         ) : (
           <p className="text-xs text-center py-4" style={{ color: '#CCC' }}>记录体重数据后将展示趋势图</p>
         )}
 
+        {/* 周期小总结 */}
+        {summary && (
+          <div className="mt-3 px-3 py-2.5 rounded-2xl" style={{ background: '#FFF5F8', border: '1px solid #FFE0EE' }}>
+            <p className="text-xs leading-relaxed" style={{ color: '#888' }}>
+              <span style={{ color: '#FF6B9D', fontWeight: 600 }}>📊 </span>{summary}
+            </p>
+          </div>
+        )}
+
         {/* 记录按钮 */}
-        <div className="flex gap-2 mt-3">
-          <button
-            onClick={() => onAddWeight('today')}
-            className="flex-1 py-2.5 rounded-2xl text-xs font-semibold text-white"
-            style={{ background: todayHasData ? '#CCC' : 'linear-gradient(135deg, #FF6B9D, #FF9A5C)' }}
-          >
-            {todayHasData ? '✓ 今日已记录' : '+ 记录今日体重'}
-          </button>
-          <button
-            onClick={() => onAddWeight('yesterday')}
-            className="flex-1 py-2.5 rounded-2xl text-xs font-semibold"
-            style={{
-              background: yesterdayHasData ? '#F5F5F5' : '#FFF5F8',
-              color: yesterdayHasData ? '#CCC' : '#FF6B9D',
-              border: yesterdayHasData ? '1px solid #EEE' : '1px solid #FFD0E8',
-            }}
-          >
-            {yesterdayHasData ? '✓ 昨日已记录' : '+ 补录昨日体重'}
-          </button>
-        </div>
+        <button
+          onClick={onAddWeight}
+          className="w-full mt-3 py-2.5 rounded-2xl text-xs font-semibold text-white"
+          style={{ background: todayHasData ? '#CCC' : 'linear-gradient(135deg, #FF6B9D, #FF9A5C)' }}
+        >
+          {todayHasData ? '✓ 今日已记录' : '+ 记录今日体重'}
+        </button>
       </div>
     </div>
   );
 }
-
 /* ───────── section: AI 健康分析卡片 ───────── */
 function AiAnalysisSection({
   healthData,
@@ -544,7 +655,7 @@ function ToiletHistorySection({ records }: { records: any[] }) {
           const st = analysis?.status || '待分析';
           const sCol = statusColor(st);
           const d = new Date(r.created_at);
-          const dateStr = `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+          const dateStr = fmtShort(r.created_at);
 
           return (
             <div
@@ -704,26 +815,22 @@ function EditPetModal({
 /* ───────── modal: 记录体重 ───────── */
 function AddWeightModal({
   currentWeight,
-  dateType,
   onClose,
   onSave,
 }: {
   currentWeight: string;
-  dateType: 'today' | 'yesterday';
   onClose: () => void;
-  onSave: (weight: number, note: string, dateType: 'today' | 'yesterday') => Promise<void>;
+  onSave: (weight: number, note: string) => Promise<void>;
 }) {
   const [weight, setWeight] = useState(currentWeight || '');
   const [note, setNote] = useState('');
   const [saving, setSaving] = useState(false);
 
-  const dateLabel = dateType === 'today' ? '今日' : '昨日';
-
   const handleSave = async () => {
     const w = parseFloat(weight);
     if (!w || w <= 0) { alert('请输入有效体重'); return; }
     setSaving(true);
-    await onSave(w, note, dateType);
+    await onSave(w, note);
     setSaving(false);
   };
 
@@ -744,7 +851,7 @@ function AddWeightModal({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-4">
-          <span className="font-bold" style={{ fontSize: '16px', color: '#333' }}>记录{dateLabel}体重</span>
+          <span className="font-bold" style={{ fontSize: '16px', color: '#333' }}>记录今日体重</span>
           <button onClick={onClose} className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: '#F5F5F5' }}>
             <X size={16} color="#999" />
           </button>
@@ -752,7 +859,7 @@ function AddWeightModal({
 
         <div className="flex flex-col gap-3">
           <div>
-            <label className="text-xs font-medium mb-1 block" style={{ color: '#888' }}>{dateLabel}体重 (kg)</label>
+            <label className="text-xs font-medium mb-1 block" style={{ color: '#888' }}>今日体重 (kg)</label>
             <input
               type="number"
               value={weight}
@@ -784,7 +891,7 @@ function AddWeightModal({
           className="w-full mt-5 py-3.5 rounded-2xl text-sm font-bold text-white flex items-center justify-center gap-2"
           style={{ background: 'linear-gradient(135deg, #FF6B9D, #FF9A5C)', opacity: saving ? 0.6 : 1 }}
         >
-          {saving ? '保存中...' : `✓ 记录${dateLabel}体重`}
+          {saving ? '保存中...' : '✓ 记录今日体重'}
         </motion.button>
       </motion.div>
     </motion.div>
@@ -1092,8 +1199,7 @@ export function HealthPage() {
   // modals
   const [showEditModal, setShowEditModal] = useState(false);
   const [showWeightModal, setShowWeightModal] = useState(false);
-  const [weightDateType, setWeightDateType] = useState<'today' | 'yesterday'>('today');
-  const [showPhotoModal, setShowPhotoModal] = useState(false);
+const [showPhotoModal, setShowPhotoModal] = useState(false);
 
   // SBTI result — loaded from IndexedDB (not backend)
   const [sbtiResult, setSbtiResult] = useState<SBTIResult | null>(null);
@@ -1165,16 +1271,9 @@ export function HealthPage() {
     }
   };
 
-  const handleAddWeight = async (weight: number, note: string, dateType: 'today' | 'yesterday') => {
+  const handleAddWeight = async (weight: number, note: string) => {
     try {
-      let recordedAt: string | undefined;
-      if (dateType === 'yesterday') {
-        const d = new Date();
-        d.setDate(d.getDate() - 1);
-        recordedAt = toLocalDateStr(d);
-      }
-      await apiAddWeightRecord({ userId, petId, weight, note, recordedAt });
-      // refresh
+      await apiAddWeightRecord({ userId, petId, weight, note });
       const history = await apiGetWeightHistory(userId, petId, 60);
       setWeightHistory(history);
       await loadPet();
@@ -1230,7 +1329,8 @@ export function HealthPage() {
           <WeightSection
             currentWeight={pet.weight || ''}
             weightHistory={weightHistory}
-            onAddWeight={(dateType) => { setWeightDateType(dateType); setShowWeightModal(true); }}
+            pet={pet}
+            onAddWeight={() => setShowWeightModal(true)}
           />
 
           <AiAnalysisSection
@@ -1264,7 +1364,7 @@ export function HealthPage() {
             <EditPetModal pet={pet} onClose={() => setShowEditModal(false)} onSave={handleSavePet} />
           )}
           {showWeightModal && (
-            <AddWeightModal currentWeight={pet.weight || ''} dateType={weightDateType} onClose={() => setShowWeightModal(false)} onSave={handleAddWeight} />
+            <AddWeightModal currentWeight={pet.weight || ''} onClose={() => setShowWeightModal(false)} onSave={handleAddWeight} />
           )}
           {showPhotoModal && (
             <UploadPhotoModal petId={petId} onClose={() => setShowPhotoModal(false)} onDone={handlePhotoDone} />

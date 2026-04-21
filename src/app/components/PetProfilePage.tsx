@@ -121,15 +121,15 @@ export function PetProfilePage() {
       // 3. 更新 current-backend-pet-id，确保后续功能页面读到新宠物数据
       localStorage.setItem('current-backend-pet-id', created.id);
 
-      // 4. 上传照片并生成 Q 版头像
-      setSubmitStatus('正在生成Q版卡通头像，请稍候...');
+      // 4. 上传照片，后端自动将正面照设为头像
       const withAvatar = await apiUploadPetPhotos(created.id, form.frontPhotoFile, form.sidePhotoFile);
 
       // 5. 把头像 URL 写回 IndexedDB（保持 localId 不变）
-      if (withAvatar?.avatarUrl) {
-        const updated = { ...baseRecord, avatarUrl: withAvatar.avatarUrl };
+      const avatarUrl = withAvatar?.avatarUrl
+        || (form.frontPhotoFile ? URL.createObjectURL(form.frontPhotoFile) : undefined);
+      if (avatarUrl) {
+        const updated = { ...baseRecord, avatarUrl };
         await savePetProfile(updated);
-        // 同步缓存，让 HomePage 立即展示头像
         const { frontPhoto, sidePhoto, ...cacheable } = updated as any;
         localStorage.setItem('current-pet-cache', JSON.stringify(cacheable));
       }
@@ -165,8 +165,8 @@ export function PetProfilePage() {
   return (
     <MiniAppShell
       title="建立宠物档案"
-      showBack={step > 0}
-      onBack={() => setStep(step - 1)}
+      showBack={true}
+      onBack={() => step > 0 ? setStep(step - 1) : navigate('/my')}
       bgColor="bg-[#FFF5F8]"
       titleColor="text-[#FF6B9D]"
     >

@@ -11,6 +11,8 @@ import { GenePage } from './components/GenePage';
 import { MatchPage } from './components/MatchPage';
 import { HealthPage } from './components/HealthPage';
 import { SBTIPage } from './components/SBTIPage';
+import { AdminPage } from './components/AdminPage';
+import { AvatarPage } from './components/AvatarPage';
 import { RouteErrorBoundary } from './components/RouteErrorBoundary';
 
 export const router = createBrowserRouter([
@@ -26,5 +28,8 @@ export const router = createBrowserRouter([
   { path: '/gene',   Component: GenePage,         ErrorBoundary: RouteErrorBoundary },
   { path: '/match',  Component: MatchPage,        ErrorBoundary: RouteErrorBoundary },
   { path: '/sbti',   Component: SBTIPage,         ErrorBoundary: RouteErrorBoundary },
+  { path: '/admin',  Component: AdminPage,        ErrorBoundary: RouteErrorBoundary },
+  { path: '/avatar', Component: AvatarPage,       ErrorBoundary: RouteErrorBoundary },
 ], { basename: import.meta.env.VITE_BASE_PATH || '/' });
+
 

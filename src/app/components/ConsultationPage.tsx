@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Send, Mic, Image as ImageIcon, Plus } from 'lucide-react';
 import { NoPetBanner } from './NoPetGuard';
+import { fmtTime } from '../lib/dateUtils';
 import { MiniAppShell } from './MiniAppShell';
 import { BorderCollieDoctor, PawPrint } from './PetCartoonIcons';
 import type { PetProfileRecord } from '../lib/petProfileDb';
@@ -58,7 +59,7 @@ export function ConsultationPage() {
           if (apiHistory.length) {
             const mapped = apiHistory.map((m) => {
               const d = new Date(m.created_at);
-              const time = `${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`;
+              const time = fmtTime(m.created_at);
               return {
                 id: m.id,
                 role: m.role === 'assistant' ? 'doctor' : 'user',

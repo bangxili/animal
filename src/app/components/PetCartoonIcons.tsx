@@ -275,6 +275,62 @@ export function PetHeartMatch({ size = 90 }: { size?: number }) {
   );
 }
 
+// 6. Cat with Palette - for 宠物AI形象
+export function PetArtist({ size = 90 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+      {/* Background bubble */}
+      <circle cx="60" cy="60" r="58" fill="#F5EEFF" />
+      {/* Cat left ear */}
+      <polygon points="26,46 20,22 42,38" fill="#C4A0DC" />
+      <polygon points="28,45 23,26 40,38" fill="#EDD0FF" />
+      {/* Cat right ear */}
+      <polygon points="94,46 100,22 78,38" fill="#C4A0DC" />
+      <polygon points="92,45 97,26 80,38" fill="#EDD0FF" />
+      {/* Head */}
+      <circle cx="60" cy="70" r="42" fill="#D4AAEE" />
+      {/* Snout */}
+      <ellipse cx="60" cy="80" rx="18" ry="12" fill="#E8CCFF" />
+      {/* Left eye */}
+      <circle cx="44" cy="64" r="9.5" fill="#A0E0A0" />
+      <ellipse cx="44" cy="64" rx="5" ry="8" fill="#222" />
+      <circle cx="46" cy="62" r="2" fill="white" />
+      <circle cx="44" cy="64" r="9.5" fill="none" stroke="#70C070" strokeWidth="1.5" />
+      {/* Right eye */}
+      <circle cx="76" cy="64" r="9.5" fill="#A0E0A0" />
+      <ellipse cx="76" cy="64" rx="5" ry="8" fill="#222" />
+      <circle cx="78" cy="62" r="2" fill="white" />
+      <circle cx="76" cy="64" r="9.5" fill="none" stroke="#70C070" strokeWidth="1.5" />
+      {/* Nose */}
+      <path d="M57 77 L60 74 L63 77 Q60 80 57 77 Z" fill="#FF88AA" />
+      {/* Mouth */}
+      <path d="M54 82 Q60 88 66 82" stroke="#FF88AA" fill="none" strokeWidth="1.5" strokeLinecap="round" />
+      {/* Whiskers */}
+      <line x1="20" y1="76" x2="46" y2="79" stroke="#B090CC" strokeWidth="1.2" />
+      <line x1="20" y1="82" x2="46" y2="82" stroke="#B090CC" strokeWidth="1.2" />
+      <line x1="74" y1="79" x2="100" y2="76" stroke="#B090CC" strokeWidth="1.2" />
+      <line x1="74" y1="82" x2="100" y2="82" stroke="#B090CC" strokeWidth="1.2" />
+      {/* Cheek blush */}
+      <ellipse cx="32" cy="74" rx="8" ry="5" fill="#FFAACC" opacity="0.45" />
+      <ellipse cx="88" cy="74" rx="8" ry="5" fill="#FFAACC" opacity="0.45" />
+      {/* Paint palette */}
+      <ellipse cx="92" cy="34" rx="16" ry="12" fill="white" stroke="#C4A0DC" strokeWidth="2" />
+      <ellipse cx="94" cy="38" rx="6" ry="5" fill="white" />
+      {/* Paint dots on palette */}
+      <circle cx="82" cy="30" r="4" fill="#FF6B9D" />
+      <circle cx="92" cy="26" r="4" fill="#FBC2EB" />
+      <circle cx="101" cy="30" r="4" fill="#A18CD1" />
+      <circle cx="100" cy="40" r="4" fill="#64D4A8" />
+      {/* Paintbrush */}
+      <rect x="76" y="44" width="3" height="22" rx="1.5" fill="#C4956A" transform="rotate(-35 76 44)" />
+      <rect x="71" y="56" width="3" height="8" rx="1" fill="#A18CD1" transform="rotate(-35 71 56)" />
+      {/* Sparkles */}
+      <path d="M22 32 L23 36 L27 37 L23 38 L22 42 L21 38 L17 37 L21 36 Z" fill="#FFD700" opacity="0.9" />
+      <path d="M36 18 L37 21 L40 22 L37 23 L36 26 L35 23 L32 22 L35 21 Z" fill="#FBC2EB" opacity="0.9" />
+    </svg>
+  );
+}
+
 // Paw print icon for decorative use
 export function PawPrint({ size = 24, color = "#FF6B9D" }: { size?: number; color?: string }) {
   return (

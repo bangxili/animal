@@ -17,6 +17,22 @@ UPLOAD_DIR = Path("uploads/pets")
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 AVATAR_DIR = Path("uploads/avatars")
 AVATAR_DIR.mkdir(parents=True, exist_ok=True)
+ID_PHOTO_DIR = Path("uploads/id_photos")
+ID_PHOTO_DIR.mkdir(parents=True, exist_ok=True)
+
+STYLE_PROMPTS: dict[str, str] = {
+    "headshot": (
+        "参考美式校园风格headshot，只露出上半身，不要改变宠物样貌，"
+        "专业摄影棚灯光，背景为柔和渐变，高清写实风格"
+    ),
+    "grid9": (
+        "根据这张照片给宠物生成9张不同表情的证件照，白底，只露出上半身，"
+        "不要改变宠物样貌，比例3:4。"
+        "表情分别为（1）正脸吐舌头笑（2）歪头吐舌头舔鼻尖（3）正脸咧嘴笑"
+        "（4）正脸举左侧爪子（5）正脸大笑（6）歪头大笑（7）歪头吐舌笑"
+        "（8）正脸委屈（9）正脸张嘴笑闭眼睛。原比例，3列3行网格排列"
+    ),
+}
 
 
 def _file_to_base64_data_uri(file_bytes: bytes, filename: str) -> str:
@@ -86,7 +102,7 @@ def update_pet(pet_id: int, payload: dict, db: Session = Depends(get_db)):
     if not pet:
         raise HTTPException(status_code=404, detail="pet not found")
 
-    allowed = {"name", "age", "age_unit", "gender", "pet_type", "breed", "weight", "length"}
+    allowed = {"name", "age", "age_unit", "gender", "pet_type", "breed", "weight", "length", "avatar_url"}
     for k, v in payload.items():
         if k in allowed:
             setattr(pet, k, v)
@@ -239,16 +255,109 @@ async def upload_pet_photos(
 
     db.commit()
 
-    # 上传了照片后，生成Q版卡通头像并保存到 avatar_url
-    if photo_data_list:
-        print(f"[Avatar] Starting cartoon generation for pet {pet_id} with {len(photo_data_list)} photo(s)...")
-        cartoon_url = await _generate_cartoon_image(pet, photo_data_list)
-        if cartoon_url:
-            pet.avatar_url = cartoon_url
-            db.commit()
-            print(f"[Avatar] Saved avatar_url for pet {pet_id}: {cartoon_url[:80]}...")
-        else:
-            print(f"[Avatar] Failed to generate cartoon for pet {pet_id}")
+    # 用正面照路径作为默认头像（不再自动生成Q版）
+    if front_photo and pet.front_photo_path and not pet.avatar_url:
+        pet.avatar_url = f"/{pet.front_photo_path}"
+        db.commit()
 
     db.refresh(pet)
     return pet
+
+
+@router.post("/{pet_id}/generate-avatar", response_model=PetProfileOut)
+async def generate_pet_avatar(
+    pet_id: int,
+    db: Session = Depends(get_db),
+):
+    """单独触发 Q 版卡通头像生成（调用 Seedream 模型）"""
+    pet = db.query(PetProfile).filter(PetProfile.id == pet_id).first()
+    if not pet:
+        raise HTTPException(status_code=404, detail="pet not found")
+    if not pet.front_photo_path:
+        raise HTTPException(status_code=400, detail="请先上传宠物正面照片")
+
+    # 读取正面照文件
+    front_path = Path(pet.front_photo_path)
+    if not front_path.exists():
+        # 兼容有前导斜杠的路径
+        front_path = Path("." + pet.front_photo_path) if pet.front_photo_path.startswith("/") else Path(pet.front_photo_path)
+    if not front_path.exists():
+        raise HTTPException(status_code=404, detail="正面照文件不存在，请重新上传")
+
+    front_bytes = front_path.read_bytes()
+    photo_data_list = [(front_bytes, front_path.name)]
+
+    cartoon_url = await _generate_cartoon_image(pet, photo_data_list)
+    if not cartoon_url:
+        raise HTTPException(status_code=502, detail="AI 形象生成失败，请稍后重试")
+
+    pet.avatar_url = cartoon_url
+    db.commit()
+    db.refresh(pet)
+    return pet
+
+
+@router.post("/{pet_id}/id-photo")
+async def generate_id_photo(
+    pet_id: int,
+    style: str = Form(...),
+    photo: UploadFile = File(...),
+    db: Session = Depends(get_db),
+):
+    """生成宠物证件照（headshot 或 grid9）"""
+    pet = db.query(PetProfile).filter(PetProfile.id == pet_id).first()
+    if not pet:
+        raise HTTPException(status_code=404, detail="pet not found")
+
+    prompt = STYLE_PROMPTS.get(style)
+    if not prompt:
+        raise HTTPException(status_code=400, detail="invalid style")
+
+    api_key = ARK_API_KEY.strip()
+    if not api_key:
+        raise HTTPException(status_code=502, detail="AI 服务未配置")
+
+    photo_bytes = await photo.read()
+    ref_image = _file_to_base64_data_uri(photo_bytes, photo.filename or "photo.jpg")
+
+    payload = {
+        "model": ARK_SEEDREAM_MODEL,
+        "prompt": prompt,
+        "image": [ref_image],
+        "sequential_image_generation": "disabled",
+        "response_format": "url",
+        "size": "2K",
+        "stream": False,
+        "watermark": True,
+    }
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {api_key}",
+    }
+
+    print(f"[IdPhoto] style={style}, pet={pet.name}")
+    try:
+        async with httpx.AsyncClient(timeout=httpx.Timeout(180, connect=30)) as client:
+            resp = await client.post(ARK_IMAGES_URL, headers=headers, json=payload)
+            if resp.status_code != 200:
+                print(f"[IdPhoto] FAILED (HTTP {resp.status_code}): {resp.text[:300]}")
+                raise HTTPException(status_code=502, detail=f"生成失败 ({resp.status_code})")
+
+            data = resp.json()
+            remote_url = data.get("data", [{}])[0].get("url")
+            if not remote_url:
+                raise HTTPException(status_code=502, detail="生成失败，未获取到图片 URL")
+
+            dl_resp = await client.get(remote_url)
+            local_name = f"{uuid4().hex}_idphoto.jpeg"
+            local_path = ID_PHOTO_DIR / local_name
+            local_path.write_bytes(dl_resp.content)
+            local_url = f"/uploads/id_photos/{local_name}"
+            print(f"[IdPhoto] saved: {local_url}")
+            return {"url": local_url}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"[IdPhoto] Exception: {type(e).__name__}: {e}")
+        raise HTTPException(status_code=502, detail=f"生成失败: {type(e).__name__}")

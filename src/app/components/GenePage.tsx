@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Camera, ChevronRight, Clock, Crown, X } from 'lucide-react';
+import { fmtLong } from '../lib/dateUtils';
 import { NoPetBanner } from './NoPetGuard';
 import { MiniAppShell } from './MiniAppShell';
 import { RabbitScientist, PawPrint } from './PetCartoonIcons';
@@ -90,11 +91,6 @@ export function GenePage() {
   const resetAll = () => {
     setResult(null);
     clearImage();
-  };
-
-  const formatDate = (dateStr: string) => {
-    const d = new Date(dateStr);
-    return `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()} ${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`;
   };
 
   // 渲染基因结果面板（upload 和 history 详情共用）
@@ -335,7 +331,7 @@ export function GenePage() {
                           <div className="flex flex-col items-end gap-1">
                             <div className="flex items-center gap-1" style={{ color: '#BBB' }}>
                               <Clock size={11} />
-                              <span style={{ fontSize: '10px' }}>{formatDate(r.created_at)}</span>
+                              <span style={{ fontSize: '10px' }}>{fmtLong(r.created_at)}</span>
                             </div>
                             <ChevronRight size={14} color="#CCC" />
                           </div>

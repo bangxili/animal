@@ -22,4 +22,11 @@ export default defineConfig({
 
   // Sub-path deployment: served at /pet/
   base: process.env.VITE_BASE_PATH ? process.env.VITE_BASE_PATH.replace(/\/?$/, '/') : '/',
+
+  server: {
+    proxy: {
+      '/api': 'http://127.0.0.1:8000',
+      '/uploads': 'http://127.0.0.1:8000',
+    },
+  },
 })

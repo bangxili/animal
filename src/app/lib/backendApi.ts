@@ -1,6 +1,6 @@
 import type { PetProfileRecord } from './petProfileDb';
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000';
+const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '';
 
 // ── 注册 / 登录 ───────────────────────────────────────────────
 
@@ -184,6 +184,16 @@ export async function apiUploadPetPhotos(petId: string, front?: File | null, sid
 export async function apiDeletePet(petId: string): Promise<void> {
   const res = await fetch(`${API_BASE}/api/pets/${petId}`, { method: 'DELETE' });
   if (!res.ok) throw new Error('delete pet failed');
+}
+
+export async function apiGeneratePetAvatar(petId: string): Promise<PetProfileRecord> {
+  const res = await fetch(`${API_BASE}/api/pets/${petId}/generate-avatar`, { method: 'POST' });
+  if (!res.ok) {
+    let detail = `HTTP ${res.status}`;
+    try { const body = await res.json(); detail = body.detail || detail; } catch { /* ignore */ }
+    throw new Error(detail);
+  }
+  return mapApiPetToRecord(await res.json() as ApiPet);
 }
 
 export async function apiGetConsultationHistory(userId: string, petId: string): Promise<ApiMessage[]> {
@@ -527,6 +537,26 @@ export async function apiGetPetPhotoUrls(petId: string): Promise<{ frontPhotoUrl
     frontPhotoUrl: toUrl(data.front_photo_path),
     sidePhotoUrl: toUrl(data.side_photo_path),
   };
+}
+
+export async function apiGenerateIdPhoto(
+  petId: string,
+  style: 'headshot' | 'grid9',
+  photo: File,
+): Promise<{ url: string }> {
+  const form = new FormData();
+  form.append('style', style);
+  form.append('photo', photo);
+  const res = await fetch(`${API_BASE}/api/pets/${petId}/id-photo`, {
+    method: 'POST',
+    body: form,
+  });
+  if (!res.ok) {
+    let detail = `HTTP ${res.status}`;
+    try { const body = await res.json(); detail = body.detail || detail; } catch { /* ignore */ }
+    throw new Error(detail);
+  }
+  return res.json();
 }
 
 // 宠物社交主页 API

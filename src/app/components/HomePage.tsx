@@ -13,6 +13,7 @@ import {
   HamsterChef,
   RabbitScientist,
   PetHeartMatch,
+  PetArtist,
   PawPrint,
 } from './PetCartoonIcons';
 
@@ -68,6 +69,16 @@ const features = [
     tag: '🧠 测一测',
   },
   {
+    id: 'avatar',
+    title: '宠物AI形象',
+    subtitle: 'Q版卡通生成',
+    path: '/avatar',
+    gradient: ['#A18CD1', '#FBC2EB'],
+    icon: PetArtist,
+    imgSrc: undefined,
+    tag: '✨ AI绘图',
+  },
+  {
     id: 'match',
     title: '宠物交友',
     subtitle: '配对恋爱',
@@ -80,7 +91,6 @@ const features = [
 ];
 
 const defaultHealthTips = [
-  '🌟 今天运动了30分钟，状态很棒！',
   '💊 记得给毛孩子做每月定期驱虫哦~',
   '🥩 根据体重合理安排蛋白质摄入~',
   '🌡️ 近期天气变化，注意宠物保暖~',
@@ -122,7 +132,7 @@ export function HomePage() {
   const [editSaving, setEditSaving] = useState(false);
   const [toiletRecords, setToiletRecords] = useState<any[]>([]);
   const featuredFeature = features[5];
-  const FeaturedIcon = featuredFeature.icon;
+  const FeaturedIcon = featuredFeature.icon as any;
 
   const profile = useMemo(
     () => pets.find((p) => p.id === currentPetId) || pets[0] || null,
@@ -504,40 +514,40 @@ export function HomePage() {
 
           {/* Feature Grid */}
           <div className="px-4 grid grid-cols-2 gap-3">
-            {features.slice(0, 5).map((feature, index) => (
+            {features.slice(0, 6).map((feature, index) => (
               <FeatureCard key={feature.id} feature={feature} index={index} navigate={navigate} />
             ))}
           </div>
 
-          {/* Full-width last feature */}
+          {/* Full-width last feature (宠物AI形象) */}
           <div className="px-4 mt-3">
             <motion.button
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.5 }}
+              transition={{ delay: 0.6 }}
               whileTap={{ scale: 0.97 }}
-              onClick={() => navigate(featuredFeature.path)}
+              onClick={() => navigate(features[6].path)}
               className="w-full rounded-3xl overflow-hidden flex items-center gap-4 px-5 py-4 relative"
               style={{
-                background: `linear-gradient(135deg, ${featuredFeature.gradient[0]}, ${featuredFeature.gradient[1]})`,
-                boxShadow: `0 6px 20px ${featuredFeature.gradient[0]}55`,
+                background: `linear-gradient(135deg, ${features[6].gradient[0]}, ${features[6].gradient[1]})`,
+                boxShadow: `0 6px 20px ${features[6].gradient[0]}55`,
               }}
             >
               <div className="absolute right-4 top-1/2 -translate-y-1/2 opacity-20">
                 <PawPrint size={50} color="white" />
               </div>
               <div className="w-16 h-16 flex-shrink-0">
-                <FeaturedIcon size={64} />
+                <PetHeartMatch size={64} />
               </div>
               <div className="flex-1 text-left">
                 <span
                   className="inline-block px-2 py-0.5 rounded-full text-xs text-white mb-1"
                   style={{ background: 'rgba(255,255,255,0.25)' }}
                 >
-                  {featuredFeature.tag}
+                  {features[6].tag}
                 </span>
-                <p className="text-white font-bold" style={{ fontSize: '18px' }}>{featuredFeature.title}</p>
-                <p className="text-white/80" style={{ fontSize: '12px' }}>{featuredFeature.subtitle}</p>
+                <p className="text-white font-bold" style={{ fontSize: '18px' }}>{features[6].title}</p>
+                <p className="text-white/80" style={{ fontSize: '12px' }}>{features[6].subtitle}</p>
               </div>
               <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: 'rgba(255,255,255,0.25)' }}>
                 <span className="text-white" style={{ fontSize: '16px' }}>→</span>
@@ -824,7 +834,7 @@ function FeatureCard({
             className="flex items-center justify-center rounded-2xl"
             style={{ width: 72, height: 72, fontSize: '40px', background: 'rgba(255,255,255,0.18)' }}
           >
-            🐾
+            {feature.id === 'avatar' ? '🎨' : '🐾'}
           </div>
         )}
       </div>
