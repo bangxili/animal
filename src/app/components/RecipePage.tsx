@@ -174,7 +174,7 @@ export function RecipePage() {
           className="px-5 py-4 flex items-center gap-4"
           style={{ background: 'linear-gradient(135deg, #64D4A8, #A8E6CF)', borderRadius: '0 0 24px 24px' }}
         >
-          <HamsterChef size={60} />
+          <img src={`${import.meta.env.BASE_URL}feature-icons/3.png`} alt="每日食谱" style={{ width: 60, height: 60, borderRadius: '50%', objectFit: 'cover' }} />
           <div className="flex-1">
             <p className="text-white font-bold" style={{ fontSize: '16px' }}>小仓营养师🍴</p>
             <p className="text-white/80" style={{ fontSize: '12px' }}>基于问诊+健康数据智能推荐</p>

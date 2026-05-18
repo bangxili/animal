@@ -170,7 +170,7 @@ export function GenePage() {
           className="px-5 py-4 flex items-center gap-4"
           style={{ background: 'linear-gradient(135deg, #7C5CBF, #C3A6FF)', borderRadius: '0 0 24px 24px' }}
         >
-          <RabbitScientist size={60} />
+          <img src={`${import.meta.env.BASE_URL}feature-icons/4.png`} alt="基因检测" style={{ width: 60, height: 60, borderRadius: '50%', objectFit: 'cover' }} />
           <div>
             <p className="text-white font-bold" style={{ fontSize: '16px' }}>基因兔博士🔬</p>
             <p className="text-white/80" style={{ fontSize: '12px' }}>探索毛孩子的神秘血统</p>

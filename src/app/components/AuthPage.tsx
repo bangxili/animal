@@ -81,29 +81,17 @@ export function AuthPage() {
         <div className="flex flex-col items-center pt-16 pb-8 px-8">
           {/* App icon */}
           <div
-            className="w-20 h-20 rounded-[24px] flex items-center justify-center shadow-xl mb-4"
-            style={{ background: 'rgba(255,255,255,0.92)' }}
+            className="w-24 h-24 rounded-[24px] flex items-center justify-center shadow-xl mb-4 overflow-hidden"
+            style={{ background: 'rgba(255,255,255,0.95)' }}
           >
-            <svg width="48" height="48" viewBox="0 0 100 100" fill="none">
-              <ellipse cx="24" cy="42" rx="14" ry="22" fill="#FF9A5C" transform="rotate(-10 24 42)" />
-              <ellipse cx="76" cy="42" rx="14" ry="22" fill="#FF9A5C" transform="rotate(10 76 42)" />
-              <circle cx="50" cy="58" r="38" fill="#FFCA7A" />
-              <ellipse cx="50" cy="70" rx="18" ry="13" fill="#FFE0A0" />
-              <circle cx="37" cy="52" r="8" fill="white" />
-              <circle cx="38" cy="53" r="5.5" fill="#333" />
-              <circle cx="40" cy="51" r="1.8" fill="white" />
-              <circle cx="63" cy="52" r="8" fill="white" />
-              <circle cx="64" cy="53" r="5.5" fill="#333" />
-              <circle cx="66" cy="51" r="1.8" fill="white" />
-              <ellipse cx="50" cy="67" rx="7" ry="5" fill="#FF6B9D" />
-              <path d="M43 74 Q50 80 57 74" stroke="#CC3366" fill="none" strokeWidth="1.8" strokeLinecap="round" />
-              <ellipse cx="29" cy="62" rx="8" ry="5" fill="#FF8080" opacity="0.4" />
-              <ellipse cx="71" cy="62" rx="8" ry="5" fill="#FF8080" opacity="0.4" />
-              <path d="M50 32 Q50 25 44 25 Q40 25 40 30 Q40 36 50 42 Q60 36 60 30 Q60 25 56 25 Q50 25 50 32 Z" fill="#FF6B9D" />
-            </svg>
+            <img
+              src={`${import.meta.env.BASE_URL}logo.png`}
+              alt="爪爪远眺"
+              style={{ width: '110%', height: '110%', objectFit: 'cover' }}
+            />
           </div>
 
-          <h1 className="text-white font-extrabold tracking-tight" style={{ fontSize: 28 }}>毛毛健康</h1>
+          <h1 className="text-white font-extrabold tracking-tight" style={{ fontSize: 28 }}>爪爪远眺</h1>
           <p className="text-white/80 text-sm mt-1">宠物专属 AI 健康管家</p>
         </div>
 

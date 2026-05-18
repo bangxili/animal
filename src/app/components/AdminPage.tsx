@@ -237,7 +237,7 @@ function LoginScreen({ onLogin }: { onLogin: (token: string) => void }) {
       <div style={{ background: '#fff', borderRadius: 16, padding: '40px 48px', boxShadow: '0 4px 24px rgba(0,0,0,0.08)', width: 360 }}>
         <div style={{ textAlign: 'center', marginBottom: 28 }}>
           <div style={{ fontSize: 36, marginBottom: 8 }}>🐾</div>
-          <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: '#1a1a2e' }}>毛毛健康 管理端</h2>
+          <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: '#1a1a2e' }}>爪爪远眺 管理端</h2>
           <p style={{ margin: '4px 0 0', color: '#888', fontSize: 13 }}>Admin Dashboard</p>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -624,7 +624,7 @@ export function AdminPage() {
     <div style={{ minHeight: '100vh', background: '#f5f7fa', fontFamily: '-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif' }}>
       <div style={{ background: '#fff', borderBottom: '1px solid #e8ecf0', padding: '0 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 56 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-          <span style={{ fontSize: 18, fontWeight: 700, color: '#1a1a2e' }}>🐾 毛毛健康 Admin</span>
+          <span style={{ fontSize: 18, fontWeight: 700, color: '#1a1a2e' }}>🐾 爪爪远眺 Admin</span>
           <div style={{ display: 'flex', gap: 4 }}>
             {(['dashboard', 'users'] as Tab[]).map(t => (
               <button key={t} onClick={() => setTab(t)} style={{ padding: '6px 16px', borderRadius: 8, border: 'none', cursor: 'pointer', fontWeight: tab === t ? 600 : 400, fontSize: 13, background: tab === t ? '#eef2ff' : 'transparent', color: tab === t ? '#667eea' : '#666' }}>

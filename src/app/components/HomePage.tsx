@@ -23,9 +23,9 @@ const features = [
     title: '宠物问诊',
     subtitle: 'AI兽医在线',
     path: '/consultation',
-    gradient: ['#FF6B9D', '#FF9A5C'],
+    gradient: ['#FF8FAD', '#FF6B9D'],
     icon: BorderCollieDoctor,
-    imgSrc: undefined,
+    imgSrc: `${import.meta.env.BASE_URL}feature-icons/1.png`,
     tag: '🔥 热门',
   },
   {
@@ -33,9 +33,9 @@ const features = [
     title: '每日大小便',
     subtitle: '健康分析',
     path: '/toilet',
-    gradient: ['#5B8DEF', '#7EC8E3'],
+    gradient: ['#5B9FEF', '#7EC8E3'],
     icon: OrangeCatAnalyst,
-    imgSrc: undefined,
+    imgSrc: `${import.meta.env.BASE_URL}feature-icons/2.png`,
     tag: '📊 日常',
   },
   {
@@ -43,9 +43,9 @@ const features = [
     title: '每日食谱',
     subtitle: '智能营养',
     path: '/recipe',
-    gradient: ['#64D4A8', '#A8E6CF'],
+    gradient: ['#4DBFA0', '#A8E6CF'],
     icon: HamsterChef,
-    imgSrc: undefined,
+    imgSrc: `${import.meta.env.BASE_URL}feature-icons/3.png`,
     tag: '🥗 推荐',
   },
   {
@@ -53,9 +53,9 @@ const features = [
     title: '基因检测',
     subtitle: '探索血统',
     path: '/gene',
-    gradient: ['#7C5CBF', '#C3A6FF'],
+    gradient: ['#8B6FD4', '#C3A6FF'],
     icon: RabbitScientist,
-    imgSrc: undefined,
+    imgSrc: `${import.meta.env.BASE_URL}feature-icons/4.png`,
     tag: '🧬 科技',
   },
   {
@@ -63,9 +63,9 @@ const features = [
     title: '宠物版SBTI',
     subtitle: '性格测试',
     path: '/sbti',
-    gradient: ['#FFB347', '#FF7F1E'],
+    gradient: ['#FFB347', '#FFCE67'],
     icon: null,
-    imgSrc: `${import.meta.env.BASE_URL}sbti-assets/sbti-icon.png`,
+    imgSrc: `${import.meta.env.BASE_URL}feature-icons/5.png`,
     tag: '🧠 测一测',
   },
   {
@@ -73,9 +73,9 @@ const features = [
     title: '宠物AI形象',
     subtitle: 'Q版卡通生成',
     path: '/avatar',
-    gradient: ['#A18CD1', '#FBC2EB'],
+    gradient: ['#9B7FD4', '#CDB4FF'],
     icon: PetArtist,
-    imgSrc: undefined,
+    imgSrc: `${import.meta.env.BASE_URL}feature-icons/6.png`,
     tag: '✨ AI绘图',
   },
   {
@@ -83,9 +83,9 @@ const features = [
     title: '宠物交友',
     subtitle: '配对恋爱',
     path: '/match',
-    gradient: ['#FF6B9D', '#FF80CC'],
+    gradient: ['#FF8FAD', '#FFB3CC'],
     icon: PetHeartMatch,
-    imgSrc: undefined,
+    imgSrc: `${import.meta.env.BASE_URL}feature-icons/7.png`,
     tag: '💕 配对',
   },
 ];
@@ -537,7 +537,11 @@ export function HomePage() {
                 <PawPrint size={50} color="white" />
               </div>
               <div className="w-16 h-16 flex-shrink-0">
-                <PetHeartMatch size={64} />
+                {features[6].imgSrc ? (
+                  <img src={features[6].imgSrc} alt={features[6].title} style={{ width: 64, height: 64, objectFit: 'cover', borderRadius: '50%' }} />
+                ) : (
+                  <PetHeartMatch size={64} />
+                )}
               </div>
               <div className="flex-1 text-left">
                 <span

@@ -22,7 +22,7 @@ function makeInitialDoctorMessage(petName: string): Message {
   return {
     id: 1,
     role: 'doctor',
-    text: `汪汪！你好呀！我是毛毛健康的AI宠物医生🐾，你可以叫我"毛博士"！我专门负责宠物健康咨询哦～\n\n请问你的${petName}今天有什么不舒服吗？🌟`,
+    text: `汪汪！你好呀！我是爪爪远眺的AI宠物医生🐾，你可以叫我"毛博士"！我专门负责宠物健康咨询哦～\n\n请问你的${petName}今天有什么不舒服吗？🌟`,
     time: '09:30',
   };
 }
@@ -190,7 +190,7 @@ export function ConsultationPage() {
           style={{ background: 'linear-gradient(135deg, #5B8DEF, #7EC8E3)', borderRadius: '0 0 24px 24px' }}
         >
           <div className="flex-shrink-0">
-            <BorderCollieDoctor size={64} />
+            <img src={`${import.meta.env.BASE_URL}feature-icons/1.png`} alt="宠物问诊" style={{ width: 64, height: 64, borderRadius: '50%', objectFit: 'cover' }} />
           </div>
           <div className="flex-1">
             <div className="flex items-center gap-2 mb-1">

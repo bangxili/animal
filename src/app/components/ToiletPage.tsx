@@ -184,7 +184,7 @@ export function ToiletPage() {
           className="px-5 py-4 flex items-center gap-4"
           style={{ background: 'linear-gradient(135deg, #5B8DEF, #7EC8E3)', borderRadius: '0 0 24px 24px' }}
         >
-          <OrangeCatAnalyst size={60} />
+          <img src={`${import.meta.env.BASE_URL}feature-icons/2.png`} alt="每日大小便" style={{ width: 60, height: 60, borderRadius: '50%', objectFit: 'cover' }} />
           <div>
             <p className="text-white font-bold" style={{ fontSize: '16px' }}>健康侦探猫🔍</p>
             <p className="text-white/80" style={{ fontSize: '12px' }}>上传照片，AI分析宠物健康状态</p>

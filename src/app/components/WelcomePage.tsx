@@ -109,7 +109,7 @@ export function WelcomePage() {
               className="text-white text-center"
               style={{ fontSize: '36px', fontWeight: 800, textShadow: '0 2px 8px rgba(0,0,0,0.15)', letterSpacing: '-0.5px' }}
             >
-              毛毛健康
+              爪爪远眺
             </h1>
             <p
               className="text-white/90 text-center"
@@ -192,7 +192,7 @@ export function WelcomePage() {
 
           {/* Version */}
           <p className="text-white/50" style={{ fontSize: '11px' }}>
-            毛毛健康 v1.0.0 · 让每一只毛孩子都健康快乐 🐾
+            爪爪远眺 v1.0.0 · 让每一只毛孩子都健康快乐 🐾
           </p>
         </div>
       </div>

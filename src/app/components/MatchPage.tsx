@@ -626,7 +626,7 @@ export function MatchPage() {
           className="px-5 py-4 flex items-center gap-4"
           style={{ background: 'linear-gradient(135deg, #FF6B9D, #FF80CC)', borderRadius: '0 0 24px 24px' }}
         >
-          <PetHeartMatch size={60} />
+          <img src={`${import.meta.env.BASE_URL}feature-icons/7.png`} alt="宠物交友" style={{ width: 60, height: 60, borderRadius: '50%', objectFit: 'cover' }} />
           <div className="flex-1">
             <p className="text-white font-bold" style={{ fontSize: '16px' }}>毛毛缘分铺💕</p>
             <p className="text-white/80" style={{ fontSize: '12px' }}>基于地点+档案智能推荐</p>
